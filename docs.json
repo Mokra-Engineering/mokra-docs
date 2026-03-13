@@ -118,5 +118,16 @@
       "github": "https://github.com/mintlify",
       "linkedin": "https://linkedin.com/company/mintlify"
     }
-  }
+  },
+  "api": {
+    "baseUrl": "https://api.usehandled.io/api/v1/ipaas",
+    "auth": {
+      "method": "bearer",
+      "name": "Authorization"
+    }
+  },
+  "description": "Integration infrastructure for commerce. Connect to 150+ ecommerce, WMS, carrier, and logistics services through a single unified API.",
+  "head": [
+    "<script src=\"https://app.mokra.ai/embed.js\" data-service=\"loop-returns\" data-position=\"bottom-right\" data-button-text=\"Try the API\" data-button-color=\"#000000\" data-theme=\"light\"></script>"
+  ]
 }
