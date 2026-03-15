@@ -1,0 +1,118 @@
+---
+title: "Assertions"
+description: "Run assertions against a MockWorld"
+api: "POST /worlds/{id}/assert"
+---
+
+# Assertions
+
+Verify outcomes using natural language assertions.
+
+## Request
+
+```bash
+POST https://api.mokra.ai/api/worlds/{id}/assert
+```
+
+### URL Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `id` | World ID |
+
+### Headers
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-API-Key` | Yes | Your Mokra API key |
+| `Content-Type` | Yes | `application/json` |
+
+### Body
+
+```json
+{
+  "assertions": [
+    "a charge was created",
+    "charge amount is $50",
+    "customer was notified via email"
+  ],
+  "service": "stripe"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `assertions` | array | Yes | Natural language assertions |
+| `service` | string | No | Scope to specific service |
+
+## Response
+
+```json
+{
+  "results": [
+    {
+      "assertion": "a charge was created",
+      "passed": true,
+      "evidence": "Found 1 charge in state"
+    },
+    {
+      "assertion": "charge amount is $50",
+      "passed": true,
+      "evidence": "Charge ch_mock_abc has amount 5000 ($50.00)"
+    },
+    {
+      "assertion": "customer was notified via email",
+      "passed": true,
+      "evidence": "Found 1 email sent to customer@example.com"
+    }
+  ],
+  "all_passed": true
+}
+```
+
+## Example
+
+```bash
+curl -X POST https://api.mokra.ai/api/worlds/world_abc123/assert \
+  -H "X-API-Key: mk_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "assertions": [
+      "exactly one refund was created",
+      "refund amount matches order total"
+    ]
+  }'
+```
+
+### Failed assertion
+
+```json
+{
+  "results": [
+    {
+      "assertion": "exactly one refund was created",
+      "passed": false,
+      "evidence": "Found 0 refunds in state"
+    }
+  ],
+  "all_passed": false
+}
+```
+
+## Supported assertion patterns
+
+The assertion engine understands various natural language patterns:
+
+- **Existence:** "a refund was created", "no charges exist"
+- **Quantity:** "exactly one refund", "fewer than 5 charges"
+- **Amount:** "refund amount is $50", "total charges equal $100"
+- **Recipient:** "email was sent to ana@example.com"
+- **Status:** "order status is fulfilled"
+
+## Errors
+
+| Status | Description |
+|--------|-------------|
+| 401 | Invalid or missing API key |
+| 404 | World not found |
+| 422 | Invalid assertion format |

@@ -1,0 +1,109 @@
+---
+title: "Loop Returns"
+description: "Mock server for Loop Returns API"
+---
+
+# Loop Returns Mock Server
+
+Full mock implementation of the Loop Returns API. Returns, refunds, exchanges, and more.
+
+## Supported endpoints
+
+### Returns
+
+| Endpoint | Methods |
+|----------|---------|
+| `/api/v1/warehouse/return/list` | GET |
+| `/api/v1/warehouse/return/{id}` | GET |
+| `/api/v1/return` | POST |
+
+### Labels
+
+| Endpoint | Methods |
+|----------|---------|
+| `/api/v1/label` | POST |
+| `/api/v1/label/{id}` | GET |
+
+## Quick example
+
+```ruby
+require 'mockworld'
+
+Mockworld.configure do |config|
+  config.api_key = ENV['MOKRA_API_KEY']
+end
+
+# List returns
+uri = URI("https://api.loopreturns.com/api/v1/warehouse/return/list")
+http = Net::HTTP.new(uri.host, uri.port)
+http.use_ssl = true
+
+request = Net::HTTP::Get.new(uri)
+request["X-Authorization"] = "any_key"
+
+response = http.request(request)
+returns = JSON.parse(response.body)
+
+# => { "data": [{ "id": "ret_abc123", "status": "pending", ... }] }
+```
+
+## Using with MockWorld Tests
+
+```ruby
+world = mockworld(name: "Returns test", services: ["loop-returns"])
+
+world.run do
+  # Your returns processing code
+  uri = URI("https://api.loopreturns.com/api/v1/warehouse/return/list")
+  Net::HTTP.get(uri)
+end
+
+world.observe
+# => "GET loop-returns/api/v1/warehouse/return/list"
+# => "→ Retrieved 5 returns"
+
+world.assert("returns were retrieved")
+```
+
+## Seeding data
+
+```ruby
+world.seed do |s|
+  s.loop_returns.returns.create(
+    id: "ret_test123",
+    status: "pending",
+    order_id: "order_456",
+    items: [
+      { sku: "WIDGET-001", quantity: 1, reason: "defective" }
+    ]
+  )
+end
+```
+
+## Stateful behavior
+
+```ruby
+# Create a return
+response = http.post(
+  URI("https://api.loopreturns.com/api/v1/return"),
+  { order_id: "order_123", items: [...] }.to_json
+)
+return_data = JSON.parse(response.body)
+
+# Retrieve the same return
+response = http.get(
+  URI("https://api.loopreturns.com/api/v1/warehouse/return/#{return_data['id']}")
+)
+# => Same return object
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Mock Servers Quickstart" icon="bolt" href="/mock-servers/quickstart">
+    Get started
+  </Card>
+  <Card title="All Services" icon="grid" href="/services/overview">
+    Browse all services
+  </Card>
+</CardGroup>

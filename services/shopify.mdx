@@ -1,0 +1,185 @@
+---
+title: "Shopify"
+description: "Mock server for Shopify Admin API"
+---
+
+# Shopify Mock Server
+
+Full mock implementation of the Shopify Admin API. Orders, products, customers, and more.
+
+## Supported endpoints
+
+### Orders
+
+| Endpoint | Methods |
+|----------|---------|
+| `/admin/api/2024-01/orders.json` | GET (list), POST (create) |
+| `/admin/api/2024-01/orders/{id}.json` | GET, PUT, DELETE |
+| `/admin/api/2024-01/orders/{id}/cancel.json` | POST |
+| `/admin/api/2024-01/orders/{id}/close.json` | POST |
+
+### Products
+
+| Endpoint | Methods |
+|----------|---------|
+| `/admin/api/2024-01/products.json` | GET (list), POST (create) |
+| `/admin/api/2024-01/products/{id}.json` | GET, PUT, DELETE |
+| `/admin/api/2024-01/products/{id}/variants.json` | GET, POST |
+
+### Customers
+
+| Endpoint | Methods |
+|----------|---------|
+| `/admin/api/2024-01/customers.json` | GET (list), POST (create) |
+| `/admin/api/2024-01/customers/{id}.json` | GET, PUT, DELETE |
+| `/admin/api/2024-01/customers/search.json` | GET |
+
+### Inventory
+
+| Endpoint | Methods |
+|----------|---------|
+| `/admin/api/2024-01/inventory_levels.json` | GET, POST |
+| `/admin/api/2024-01/inventory_items/{id}.json` | GET, PUT |
+| `/admin/api/2024-01/locations.json` | GET |
+
+## Quick example
+
+```ruby
+require 'mockworld'
+require 'shopify_api'
+
+Mockworld.configure do |config|
+  config.api_key = ENV['MOKRA_API_KEY']
+end
+
+# Configure Shopify (any credentials work)
+ShopifyAPI::Context.setup(
+  api_key: "any_key",
+  api_secret_key: "any_secret",
+  host: "mystore.myshopify.com",
+  scope: "read_products,write_orders"
+)
+
+# List orders
+orders = ShopifyAPI::Order.all
+# => [{ "id": 123, "total_price": "150.00", ... }, ...]
+
+# Get a specific order
+order = ShopifyAPI::Order.find(id: "123456789")
+# => { "id": 123456789, "total_price": "99.00", "financial_status": "paid", ... }
+
+# Create an order
+new_order = ShopifyAPI::Order.create(
+  line_items: [
+    { variant_id: "123", quantity: 2 }
+  ],
+  customer: { id: "456" }
+)
+# => { "id": 987654321, "line_items": [...], ... }
+
+# Update order
+ShopifyAPI::Order.update(id: "123456789", note: "Rush shipping")
+```
+
+## Stateful behavior
+
+```ruby
+# Create a product
+product = ShopifyAPI::Product.create(
+  title: "Test Widget",
+  body_html: "<p>A great widget</p>",
+  vendor: "Acme",
+  variants: [
+    { price: "19.99", sku: "WIDGET-001" }
+  ]
+)
+
+# Retrieve the product
+retrieved = ShopifyAPI::Product.find(id: product.id)
+# => Same product
+
+# List all products
+products = ShopifyAPI::Product.all
+# => Includes the created product
+```
+
+## Seeding data
+
+```ruby
+world.seed do |s|
+  s.shopify.orders.create(
+    id: "order_123",
+    total_price: "150.00",
+    financial_status: "paid",
+    fulfillment_status: nil,
+    customer: {
+      id: "cust_456",
+      email: "customer@example.com"
+    },
+    line_items: [
+      { title: "Widget", quantity: 1, price: "150.00" }
+    ]
+  )
+
+  s.shopify.products.create(
+    id: "prod_789",
+    title: "Premium Widget",
+    variants: [
+      { id: "var_001", price: "150.00", inventory_quantity: 10 }
+    ]
+  )
+end
+```
+
+## API version support
+
+Mokra supports multiple Shopify API versions:
+
+```ruby
+# 2024-01 (default)
+ShopifyAPI::Order.find(id: "123")
+
+# Specify version in URL
+GET /admin/api/2023-10/orders/123.json
+```
+
+## GraphQL support
+
+```ruby
+# GraphQL queries are also supported
+query = <<~GRAPHQL
+  {
+    orders(first: 10) {
+      edges {
+        node {
+          id
+          totalPrice
+        }
+      }
+    }
+  }
+GRAPHQL
+
+response = ShopifyAPI::GraphQL.execute(query)
+```
+
+## Webhook testing
+
+```ruby
+# Trigger order webhook
+Mokra.trigger_webhook("shopify", "orders/create", {
+  id: "123456789",
+  total_price: "99.00"
+})
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Mock Servers Quickstart" icon="bolt" href="/mock-servers/quickstart">
+    Get started
+  </Card>
+  <Card title="All Services" icon="grid" href="/services/overview">
+    Browse all services
+  </Card>
+</CardGroup>

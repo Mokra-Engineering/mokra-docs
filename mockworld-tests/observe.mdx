@@ -1,0 +1,211 @@
+---
+title: "Observe"
+description: "See what your agent did in plain English"
+---
+
+# Observe
+
+See what your agent did. Plain English. Not raw traces.
+
+## The difference
+
+```
+Traditional Traces:
+  tool_call(name="stripe_create_refund", args={"payment_intent": "pi_abc", "amount": 5000})
+  tool_result(result={"id": "re_xyz789", "status": "succeeded"})
+
+Mokra Observe:
+  Agent refunded $50.00 to customer
+```
+
+## Basic usage
+
+After running your agent in a MockWorld, call `observe()`:
+
+<CodeGroup>
+```ruby Ruby
+world = mockworld(name: "Refund test", services: ["stripe", "shopify"])
+
+world.run do
+  agent.process_refund("order-1234")
+end
+
+world.observe
+```
+
+```python Python
+world = mockworld(name="Refund test", services=["stripe", "shopify"])
+
+with world.run():
+    agent.process_refund("order-1234")
+
+world.observe()
+```
+</CodeGroup>
+
+**Output:**
+```
+╭─────────────────────────────────────────────────────────────╮
+│  MockWorld: Refund test                                     │
+│  Duration: 1.2s | Requests: 4                               │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  GET  shopify/admin/api/2024-01/orders/1234.json            │
+│  → Retrieved order #1234 ($150.00, paid)                    │
+│                                                             │
+│  GET  stripe/v1/payment_intents/pi_abc123                   │
+│  → Retrieved payment intent for $150.00                     │
+│                                                             │
+│  POST stripe/v1/refunds                                     │
+│  → Created full refund of $150.00                           │
+│                                                             │
+│  POST sendgrid/v3/mail/send                                 │
+│  → Sent email to ana@example.com                            │
+│    Subject: "Your refund has been processed"                │
+│                                                             │
+╰─────────────────────────────────────────────────────────────╯
+```
+
+## HTTP layer visibility
+
+Mokra operates at the HTTP layer. It catches **everything**:
+
+- Direct HTTP calls via `requests`, `fetch`, `Net::HTTP`
+- SDK calls (Stripe SDK, Shopify SDK, etc.)
+- Calls from any library or framework
+- Background HTTP requests
+- Retry attempts
+
+### What others miss
+
+LangSmith traces LangChain callbacks. But what about:
+
+- Direct HTTP calls inside your tools?
+- SDK calls that bypass your tool abstraction?
+- HTTP calls from libraries LangChain doesn't know about?
+
+**If it hits the network, Mokra sees it.**
+
+## Options
+
+### Print vs return
+
+```ruby
+# Print to console (default)
+world.observe
+
+# Return as string for logging
+log = world.observe(print: false)
+Rails.logger.info(log)
+```
+
+### Filter by service
+
+```ruby
+# Only show Stripe observations
+world.observe(service: "stripe")
+
+# Only show a specific mock server
+world.observe(mock_server_id: "ms_abc123")
+```
+
+## Programmatic access
+
+Access observations as data:
+
+<CodeGroup>
+```ruby Ruby
+observations = world.observations
+
+observations.each do |obs|
+  puts "#{obs.method} #{obs.path}"
+  puts "  Impact: #{obs.description}"
+  puts "  Status: #{obs.status_code}"
+end
+
+# Filter
+refunds = observations.select { |o| o.path.include?("refund") }
+errors = observations.select { |o| o.status_code >= 400 }
+```
+
+```python Python
+observations = world.observations()
+
+for obs in observations:
+    print(f"{obs.method} {obs.path}")
+    print(f"  Impact: {obs.description}")
+    print(f"  Status: {obs.status_code}")
+
+# Filter
+refunds = [o for o in observations if "refund" in o.path]
+errors = [o for o in observations if o.status_code >= 400]
+```
+</CodeGroup>
+
+## Debugging agent behavior
+
+When an AI agent misbehaves, Observe shows you what went wrong:
+
+```python
+world.observe()
+```
+
+**Expected:**
+```
+GET  shopify/orders/1234 → Retrieved order
+POST stripe/refunds → Created refund
+POST sendgrid/mail/send → Sent confirmation
+```
+
+**Actual (bug!):**
+```
+GET  shopify/orders/1234 → Retrieved order
+GET  shopify/orders/1234 → Retrieved order (DUPLICATE)
+GET  shopify/orders/1234 → Retrieved order (DUPLICATE)
+POST stripe/refunds → Created refund
+POST stripe/refunds → Created refund (DUPLICATE!)
+POST sendgrid/mail/send → Sent confirmation
+POST sendgrid/mail/send → Sent confirmation (DUPLICATE!)
+```
+
+Instantly visible: the agent is stuck in a loop, creating duplicate refunds.
+
+## Best practices
+
+### 1. Always observe before asserting
+
+```ruby
+world.run { ... }
+world.observe  # See what happened first
+world.assert(...) # Then assert on it
+```
+
+### 2. Log observations in CI
+
+```ruby
+# Even in passing tests, log observations
+Rails.logger.info(world.observe(print: false))
+```
+
+### 3. Use observe to debug failures
+
+```ruby
+begin
+  world.assert("exactly one refund created")
+rescue AssertionError => e
+  puts "Assertion failed. Here's what happened:"
+  world.observe
+  raise
+end
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Assert" icon="check" href="/mockworld-tests/assert">
+    Verify outcomes with assertions
+  </Card>
+  <Card title="AI Agents Guide" icon="robot" href="/guides/ai-agents">
+    Complete guide for testing agents
+  </Card>
+</CardGroup>

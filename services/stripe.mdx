@@ -1,0 +1,173 @@
+---
+title: "Stripe"
+description: "Mock server for Stripe payments API"
+---
+
+# Stripe Mock Server
+
+Full mock implementation of the Stripe API. Payments, customers, subscriptions, and more.
+
+## Supported endpoints
+
+### Core resources
+
+| Resource | Endpoints |
+|----------|-----------|
+| Charges | Create, retrieve, update, list, capture |
+| Customers | Create, retrieve, update, delete, list |
+| Payment Intents | Create, retrieve, update, confirm, cancel |
+| Payment Methods | Create, retrieve, attach, detach, list |
+| Refunds | Create, retrieve, update, list |
+
+### Billing
+
+| Resource | Endpoints |
+|----------|-----------|
+| Subscriptions | Create, retrieve, update, cancel, list |
+| Invoices | Create, retrieve, finalize, pay, list |
+| Products | Create, retrieve, update, delete, list |
+| Prices | Create, retrieve, update, list |
+
+### Connect
+
+| Resource | Endpoints |
+|----------|-----------|
+| Accounts | Create, retrieve, update, delete, list |
+| Transfers | Create, retrieve, list |
+| Payouts | Create, retrieve, list |
+
+## Quick example
+
+```ruby
+require 'mockworld'
+
+Mockworld.configure do |config|
+  config.api_key = ENV['MOKRA_API_KEY']
+end
+
+# Create a customer
+customer = Stripe::Customer.create(
+  email: "ana@example.com",
+  name: "Ana Smith"
+)
+# => { "id": "cus_mock_abc123", "email": "ana@example.com", ... }
+
+# Create a payment intent
+payment_intent = Stripe::PaymentIntent.create(
+  amount: 5000,
+  currency: "usd",
+  customer: customer.id,
+  payment_method_types: ["card"]
+)
+# => { "id": "pi_mock_xyz789", "amount": 5000, "status": "requires_payment_method", ... }
+
+# Confirm the payment
+Stripe::PaymentIntent.confirm(
+  payment_intent.id,
+  payment_method: "pm_card_visa"
+)
+# => { "id": "pi_mock_xyz789", "status": "succeeded", ... }
+
+# Create a refund
+refund = Stripe::Refund.create(
+  payment_intent: payment_intent.id,
+  amount: 2500  # Partial refund
+)
+# => { "id": "re_mock_def456", "amount": 2500, "status": "succeeded", ... }
+```
+
+## Stateful behavior
+
+The Stripe mock maintains state across requests:
+
+```ruby
+# Create a customer
+customer = Stripe::Customer.create(email: "test@example.com")
+
+# Retrieve the same customer
+retrieved = Stripe::Customer.retrieve(customer.id)
+# => Same customer object
+
+# Update the customer
+Stripe::Customer.update(customer.id, { name: "Updated Name" })
+
+# List all customers
+customers = Stripe::Customer.list
+# => Includes the created customer
+```
+
+## Test card numbers
+
+Use any of these test card numbers:
+
+| Number | Behavior |
+|--------|----------|
+| `4242424242424242` | Succeeds |
+| `4000000000000002` | Declines |
+| `4000000000009995` | Insufficient funds |
+| `4000000000000069` | Expired card |
+
+## Error simulation
+
+```ruby
+# Simulate a card decline
+Mokra.simulate_error("stripe", "card_declined")
+
+charge = Stripe::Charge.create(amount: 5000, currency: "usd")
+# => Raises Stripe::CardError
+```
+
+## Webhook testing
+
+```ruby
+# Trigger a test webhook
+Mokra.trigger_webhook("stripe", "charge.succeeded", {
+  charge_id: "ch_test_123",
+  amount: 5000
+})
+
+# Your webhook endpoint receives the event
+```
+
+## Seeding data
+
+```ruby
+world.seed do |s|
+  s.stripe.customers.create(
+    id: "cus_existing",
+    email: "existing@example.com"
+  )
+
+  s.stripe.products.create(
+    id: "prod_widget",
+    name: "Widget",
+    default_price: "price_5000"
+  )
+end
+```
+
+## SDK compatibility
+
+Works with the official Stripe Ruby SDK:
+
+```ruby
+require 'stripe'
+
+Stripe.api_key = "sk_test_anything"  # Any value works
+
+# All SDK methods work
+Stripe::Charge.create(...)
+Stripe::Customer.create(...)
+Stripe::Subscription.create(...)
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Mock Servers Quickstart" icon="bolt" href="/mock-servers/quickstart">
+    Get started
+  </Card>
+  <Card title="Stateful Mocks" icon="database" href="/mock-servers/stateful-mocks">
+    Learn about state
+  </Card>
+</CardGroup>

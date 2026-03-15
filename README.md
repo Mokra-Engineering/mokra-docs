@@ -1,55 +1,77 @@
-# Mintlify Starter Kit
+# Mokra Documentation
 
-Use the starter kit to get your docs deployed and ready to customize.
+Official documentation for [Mokra](https://mokra.ai) — Mock servers for 800+ APIs. MockWorld Tests for AI agents.
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+## What is Mokra?
 
-- Guide pages
-- Navigation
-- Customization
-- API reference pages
-- Use of popular components
+Mokra provides two products for developers:
 
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
+### Mock Servers
+Ready-to-go mock servers for 800+ real-world APIs. One credential. Realistic, stateful responses.
 
-## AI-assisted writing
+```ruby
+# One API key for Stripe, Shopify, SendGrid, and 800+ more
+charge = Stripe::Charge.create(amount: 5000, currency: "usd")
+# => Returns realistic mock response
+```
 
-Set up your AI coding tool to work with Mintlify:
+### MockWorld Tests
+A testing framework for AI agents. Assert on outcomes, not reasoning paths. Implements the MockWorld Test paradigm introduced by Peter Nsaka.
+
+```python
+world = mockworld("Refund test", services=["stripe", "shopify"])
+
+with world.run():
+    agent.invoke("Process refund for order #1234")
+
+world.observe()  # See what happened
+world.assert("exactly one refund was created")  # Verify outcomes
+```
+
+## Documentation Structure
+
+```
+/
+├── index.mdx                  # Homepage
+├── mock-servers/              # Mock Servers documentation
+├── mockworld-tests/           # MockWorld Tests documentation
+├── guides/                    # Audience-specific guides
+│   ├── api-integrations       # For traditional developers
+│   ├── ai-code-generation     # For self-correcting AI
+│   └── ai-agents              # For autonomous agents
+├── services/                  # Service-specific docs (Stripe, Shopify, etc.)
+├── sdks/                      # Ruby, Python, TypeScript SDKs
+└── api-reference/             # HTTP API documentation
+```
+
+## Local Development
+
+Install the [Mintlify CLI](https://www.npmjs.com/package/mint):
 
 ```bash
-npx skills add https://mintlify.com/docs
-```
-
-This command installs Mintlify's documentation skill for your configured AI tools like Claude Code, Cursor, Windsurf, and others. The skill includes component reference, writing standards, and workflow guidance.
-
-See the [AI tools guides](/ai-tools) for tool-specific setup.
-
-## Development
-
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
-
-```
 npm i -g mint
 ```
 
-Run the following command at the root of your documentation, where your `docs.json` is located:
+Run the local preview:
 
-```
+```bash
 mint dev
 ```
 
-View your local preview at `http://localhost:3000`.
+View at `http://localhost:3000`
 
-## Publishing changes
+## Publishing
 
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
+Changes pushed to the `main` branch are automatically deployed via the Mintlify GitHub app.
 
-## Need help?
+## Contributing
 
-### Troubleshooting
+1. Create a branch for your changes
+2. Run `mint dev` to preview locally
+3. Submit a pull request
 
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
+## Links
 
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+- [Mokra Dashboard](https://app.mokra.ai)
+- [Mokra Website](https://mokra.ai)
+- [mockworld-ruby SDK](https://github.com/AginSquash/mockworld-ruby)

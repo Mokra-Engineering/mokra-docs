@@ -1,0 +1,156 @@
+---
+title: "MockWorld Tests Overview"
+description: "A testing framework for AI agents that can't be tested traditionally"
+---
+
+# MockWorld Tests
+
+A testing framework for AI agents. Assert on outcomes, not reasoning paths.
+
+Mokra implements the [MockWorld Test paradigm](/mockworld-tests/the-paradigm) introduced by Peter Nsaka.
+
+## The problem
+
+AI agents are different from traditional code:
+
+- They **reason** and **improvise**
+- Same input leads to **different execution paths**
+- You **can't predict** exactly what steps they'll take
+- Traditional unit tests **don't work**
+
+```
+Run 1: Agent takes 3 steps → creates refund
+Run 2: Agent takes 7 steps → creates refund
+Run 3: Agent takes 5 steps → creates refund
+```
+
+And testing in production is dangerous. An agent might process 10,000 refunds before anyone catches the bug.
+
+## The solution
+
+MockWorld Tests let you test **outcomes**, not **paths**.
+
+```python
+world = mockworld("Refund test", services=["stripe", "shopify"])
+
+with world.run():
+    # Agent runs autonomously
+    # We don't control the steps
+    agent.invoke("Process refund for order #1234")
+
+# See what happened
+world.observe()
+# => "Agent retrieved order #1234"
+# => "Agent created refund of $50"
+
+# Assert on outcomes
+world.assert("exactly one refund was created")
+# ✓ Passes regardless of how many steps the agent took
+```
+
+**Traditional test:** Fails because the agent took a different path
+
+**MockWorld Test:** Passes because the outcome is correct
+
+## How it works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Your Agent                               │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  agent.invoke("Process refund for order #1234")     │    │
+│  │                                                     │    │
+│  │  → Agent reasons about what to do                   │    │
+│  │  → Makes HTTP calls to Stripe, Shopify, etc.        │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   MockWorld                                  │
+│                                                              │
+│   • Intercepts all HTTP calls                                │
+│   • Routes to mock servers                                   │
+│   • Records observations                                     │
+│   • Maintains state                                          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Your Test                                  │
+│                                                              │
+│   world.observe()  → "Agent created refund of $50"           │
+│   world.assert("exactly one refund was created")  → ✓        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Three primitives
+
+### 1. Run
+
+Wrap your agent execution in `world.run()`:
+
+```python
+world = mockworld("Test", services=["stripe", "shopify"])
+
+with world.run():
+    agent.invoke("Do the thing")
+```
+
+All HTTP calls made during execution are intercepted and routed to mock servers.
+
+### 2. Observe
+
+See what the agent did in plain English:
+
+```python
+world.observe()
+```
+
+Output:
+```
+GET  shopify/orders/1234 → Retrieved order #1234 ($75.00)
+POST stripe/v1/refunds → Created refund of $75.00
+POST sendgrid/v3/mail/send → Sent email to ana@example.com
+```
+
+Not raw traces. Human-readable impact.
+
+### 3. Assert
+
+Verify outcomes using natural language:
+
+```python
+world.assert("a refund was created")
+world.assert("refund amount is $75")
+world.assert("customer was notified")
+```
+
+Or programmatic assertions:
+
+```python
+state = world.state()
+assert state["stripe"]["refunds"].count == 1
+assert state["stripe"]["refunds"][0]["amount"] == 7500
+```
+
+## Who uses MockWorld Tests
+
+- **AI agent builders** (LangChain, CrewAI, custom agents)
+- **Teams deploying autonomous AI** to production
+- **Anyone building AI that calls real APIs**
+
+## Key differences from traditional testing
+
+| Traditional Testing | MockWorld Tests |
+|--------------------|-----------------|
+| Assert on specific steps | Assert on outcomes |
+| Breaks when agent takes different path | Works regardless of path |
+| Tests implementation | Tests behavior |
+| Predictable code only | Works with non-deterministic AI |
+
+## Next steps
+
+<Card title="Quickstart" icon="rocket" href="/mockworld-tests/quickstart">
+  Test your first AI agent in 5 minutes
+</Card>

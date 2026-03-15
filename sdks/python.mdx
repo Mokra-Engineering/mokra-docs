@@ -1,0 +1,231 @@
+---
+title: "Python SDK"
+description: "Official Python SDK for Mokra"
+---
+
+# Python SDK
+
+The official Python SDK for Mokra mock servers and MockWorld Tests.
+
+## Installation
+
+```bash
+pip install mokra
+```
+
+## Configuration
+
+```python
+import mokra
+
+mokra.configure(
+    api_key="mk_live_...",
+    base_url="https://api.mokra.ai/api"  # Optional
+)
+```
+
+### Environment variables
+
+```bash
+export MOKRA_API_KEY="mk_live_..."
+export MOKRA_BASE_URL="https://api.mokra.ai/api"  # Optional
+```
+
+```python
+import mokra
+import os
+
+mokra.configure(api_key=os.environ["MOKRA_API_KEY"])
+```
+
+## Mock Servers
+
+### Basic usage
+
+Once configured, HTTP calls are automatically intercepted:
+
+```python
+import stripe
+
+# Your code makes normal API calls
+charge = stripe.Charge.create(amount=5000, currency="usd")
+# => Returns realistic mock response
+```
+
+### With requests
+
+```python
+import requests
+
+response = requests.post(
+    "https://api.stripe.com/v1/charges",
+    auth=("sk_test_anything", ""),
+    data={"amount": 5000, "currency": "usd"}
+)
+# => Intercepted and returns mock response
+```
+
+## MockWorld Tests
+
+### Creating a world
+
+```python
+from mokra import mockworld
+
+world = mockworld(name="My test", services=["stripe", "shopify"])
+```
+
+### Running code
+
+```python
+with world.run():
+    # Your code here
+    # All HTTP calls are intercepted
+    stripe.Charge.create(amount=5000, currency="usd")
+```
+
+### Observing
+
+```python
+# Print to console
+world.observe()
+
+# Return as string
+log = world.observe(print_output=False)
+logger.info(log)
+
+# Filter by service
+world.observe(service="stripe")
+```
+
+### Asserting
+
+```python
+# Natural language (note: assert_ to avoid Python keyword)
+world.assert_("a refund was created")
+world.assert_("refund amount is $50")
+
+# Multiple assertions
+world.assert_(
+    "exactly one refund was created",
+    "customer was notified",
+    "no errors occurred"
+)
+
+# With service scope
+world.assert_("a return was created", service="loop-returns")
+```
+
+### Accessing state
+
+```python
+state = world.state()
+
+# By service
+state["stripe"]["customers"].count
+state["stripe"]["charges"][0]["amount"]
+```
+
+### Seeding
+
+```python
+world.seed("""
+  stripe:
+    customers:
+      - id: cus_test
+        email: test@example.com
+
+  shopify:
+    orders:
+      - id: order_123
+        total_price: "150.00"
+""")
+```
+
+## Example: pytest integration
+
+```python
+# conftest.py
+import pytest
+import mokra
+import os
+
+@pytest.fixture(autouse=True)
+def configure_mokra():
+    mokra.configure(api_key=os.environ["MOKRA_API_KEY"])
+
+# test_refund.py
+from mokra import mockworld
+
+def test_refund_service():
+    world = mockworld(name="Refund test", services=["stripe"])
+
+    with world.run():
+        RefundService.process(payment_id="pi_123", amount=5000)
+
+    world.assert_("a refund was created")
+    world.assert_("refund amount is $50")
+```
+
+## Example: Testing LangChain agents
+
+```python
+from mokra import mockworld
+from langchain.agents import AgentExecutor
+
+def test_support_agent():
+    world = mockworld(
+        name="Support agent test",
+        services=["stripe", "shopify", "sendgrid"]
+    )
+
+    with world.run():
+        agent = AgentExecutor(...)
+        agent.invoke({"input": "Refund order #1234"})
+
+    world.observe()
+    world.assert_("exactly one refund was created")
+    world.assert_("customer was notified")
+```
+
+## API Reference
+
+### `mockworld(name, services)`
+
+Creates a new MockWorld.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | str | Name for the world |
+| `services` | list | Services to include |
+
+### `world.run()`
+
+Context manager for running code with interception.
+
+### `world.observe(print_output=True, service=None)`
+
+Returns/prints observations.
+
+### `world.assert_(*assertions, service=None)`
+
+Verifies assertions against world state.
+
+### `world.state()`
+
+Returns the current state dict.
+
+### `world.seed(yaml_string)`
+
+Pre-populates state from YAML.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Mock Servers Quickstart" icon="bolt" href="/mock-servers/quickstart">
+    Get started
+  </Card>
+  <Card title="AI Agents Guide" icon="robot" href="/guides/ai-agents">
+    Test AI agents
+  </Card>
+</CardGroup>

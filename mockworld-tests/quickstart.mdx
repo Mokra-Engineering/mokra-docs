@@ -1,0 +1,210 @@
+---
+title: "MockWorld Tests Quickstart"
+description: "Test your first AI agent in 5 minutes"
+---
+
+# MockWorld Tests Quickstart
+
+Test AI agents that can't be tested traditionally. Assert on outcomes, not reasoning paths.
+
+## 1. Get your API key
+
+Sign up at [app.mokra.ai](https://app.mokra.ai) and copy your API key.
+
+```bash
+export MOKRA_API_KEY=mk_live_xxxxxxxxxxxxxxxx
+```
+
+## 2. Install the SDK
+
+<CodeGroup>
+```bash Ruby
+gem install mockworld
+```
+
+```bash Python
+pip install mokra
+```
+</CodeGroup>
+
+## 3. Create a MockWorld and run your agent
+
+<CodeGroup>
+```ruby Ruby
+require 'mockworld'
+
+# Create a world with the services your agent uses
+world = mockworld(name: "Refund test", services: ["stripe", "shopify"])
+
+# Run your agent inside the world
+world.run do
+  # Your agent code here
+  # All HTTP calls are automatically intercepted
+  agent.process_refund("order-1234")
+end
+```
+
+```python Python
+from mokra import mockworld
+
+# Create a world with the services your agent uses
+world = mockworld(name="Refund test", services=["stripe", "shopify"])
+
+# Run your agent inside the world
+with world.run():
+    # Your agent code here
+    # All HTTP calls are automatically intercepted
+    agent.process_refund("order-1234")
+```
+</CodeGroup>
+
+## 4. See what happened
+
+<CodeGroup>
+```ruby Ruby
+world.observe
+```
+
+```python Python
+world.observe()
+```
+</CodeGroup>
+
+**Output:**
+```
+╭─────────────────────────────────────────────────────────────╮
+│  MockWorld: Refund test                                     │
+│  Duration: 1.2s | Requests: 3                               │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  GET  shopify/admin/api/2024-01/orders/1234.json            │
+│  → Retrieved order #1234 ($150.00, paid)                    │
+│                                                             │
+│  POST stripe/v1/refunds                                     │
+│  → Created refund of $150.00                                │
+│                                                             │
+│  POST sendgrid/v3/mail/send                                 │
+│  → Sent email to customer@example.com                       │
+│                                                             │
+╰─────────────────────────────────────────────────────────────╯
+```
+
+Plain English. Not raw traces.
+
+## 5. Assert on outcomes
+
+<CodeGroup>
+```ruby Ruby
+world.assert("a refund was created")
+world.assert("refund amount is $150")
+world.assert("customer was notified via email")
+```
+
+```python Python
+world.assert_("a refund was created")
+world.assert_("refund amount is $150")
+world.assert_("customer was notified via email")
+```
+</CodeGroup>
+
+**Output:**
+```
+✓ a refund was created
+✓ refund amount is $150
+✓ customer was notified via email
+```
+
+---
+
+## Full example
+
+<CodeGroup>
+```ruby Ruby
+require 'mockworld'
+
+# 1. Create a MockWorld
+world = mockworld(name: "Customer refund flow", services: ["stripe", "shopify", "sendgrid"])
+
+# 2. Run your agent
+world.run do
+  # Agent runs autonomously
+  # We don't control how many steps it takes
+  agent.invoke("Process refund for upset customer Ana, order #1234")
+end
+
+# 3. See what the agent did
+world.observe
+
+# 4. Assert on outcomes (not paths)
+world.assert("exactly one refund was created")
+world.assert("refund amount matches order total")
+world.assert("customer received confirmation email")
+world.assert("no duplicate refunds")
+```
+
+```python Python
+from mokra import mockworld
+
+# 1. Create a MockWorld
+world = mockworld(
+    name="Customer refund flow",
+    services=["stripe", "shopify", "sendgrid"]
+)
+
+# 2. Run your agent
+with world.run():
+    # Agent runs autonomously
+    # We don't control how many steps it takes
+    agent.invoke("Process refund for upset customer Ana, order #1234")
+
+# 3. See what the agent did
+world.observe()
+
+# 4. Assert on outcomes (not paths)
+world.assert_("exactly one refund was created")
+world.assert_("refund amount matches order total")
+world.assert_("customer received confirmation email")
+world.assert_("no duplicate refunds")
+```
+</CodeGroup>
+
+---
+
+## Why this matters
+
+**Run 1:** Agent takes 3 steps → creates refund → ✓ Pass
+
+**Run 2:** Agent takes 7 steps → creates refund → ✓ Pass
+
+**Run 3:** Agent takes 5 steps → creates refund → ✓ Pass
+
+Same test. Different paths. All passing. Because we test **outcomes**, not **steps**.
+
+---
+
+## The three primitives
+
+| Primitive | What it does |
+|-----------|--------------|
+| `world.run` | Wraps agent execution. All HTTP calls intercepted and routed to mock servers. |
+| `world.observe` | Shows what the agent did in plain English. |
+| `world.assert` | Verifies outcomes regardless of execution path. |
+
+---
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="The Paradigm" icon="lightbulb" href="/mockworld-tests/the-paradigm">
+    Understand the MockWorld Test concept
+  </Card>
+  <Card title="Observe" icon="eye" href="/mockworld-tests/observe">
+    See what your agent did in detail
+  </Card>
+  <Card title="Assert" icon="check" href="/mockworld-tests/assert">
+    Learn assertion patterns
+  </Card>
+  <Card title="AI Agents Guide" icon="robot" href="/guides/ai-agents">
+    Complete guide for testing autonomous agents
+  </Card>
+</CardGroup>

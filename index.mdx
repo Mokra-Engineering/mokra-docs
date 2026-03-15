@@ -1,97 +1,216 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Mokra"
+description: "Mock servers for 800+ APIs. MockWorld Tests for AI agents."
 ---
 
-## Setting up
+# Mock APIs for the AI Era
 
-Get your documentation site up and running in minutes.
+**Mock servers** for 800+ real-world APIs. One credential. Realistic responses.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
+**MockWorld Tests** for AI agents. Assert on outcomes, not reasoning paths.
+
+---
+
+## What are you building?
+
+<CardGroup cols={3}>
+  <Card title="API Integrations" icon="code" href="/guides/api-integrations">
+    **You're writing code** that calls Stripe, Shopify, SendGrid, or other APIs.
+
+    **You need: Mock Servers**
+
+    One API key for 800+ services. Realistic responses. No more sandbox credential juggling.
+
+    [Get started →](/mock-servers/quickstart)
+  </Card>
+
+  <Card title="AI That Writes Code" icon="wand-magic-sparkles" href="/guides/ai-code-generation">
+    **Your AI generates or tests code** that calls external APIs.
+
+    **You need: Mock Servers + Observe**
+
+    Real API response shapes for your AI to learn from. See what API calls the generated code made.
+
+    [Get started →](/mock-servers/quickstart)
+  </Card>
+
+  <Card title="AI Agents" icon="robot" href="/guides/ai-agents">
+    **Your AI makes decisions** and calls APIs autonomously.
+
+    **You need: MockWorld Tests**
+
+    Assert on outcomes, not reasoning paths. Test non-deterministic behavior safely.
+
+    [Get started →](/mockworld-tests/quickstart)
+  </Card>
+</CardGroup>
+
+---
+
+## Two Products. One Platform.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│   MockWorld Tests                                               │
+│   ┌───────────────────────────────────────────────────────┐    │
+│   │  world.run { agent.invoke(...) }                      │    │
+│   │  world.observe()     → See what happened              │    │
+│   │  world.assert(...)   → Verify outcomes                │    │
+│   └───────────────────────────────────────────────────────┘    │
+│                           │                                     │
+│                           │ powered by                          │
+│                           ▼                                     │
+│   Mock Servers (standalone value)                               │
+│   ┌───────────────────────────────────────────────────────┐    │
+│   │  Stripe  │  Shopify  │  SendGrid  │  Loop  │  800+    │    │
+│   │                                                       │    │
+│   │  One API key. Realistic responses. Stateful behavior. │    │
+│   └───────────────────────────────────────────────────────┘    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Mock Servers** work standalone — call them directly for realistic API responses.
+
+**MockWorld Tests** wrap mock servers with observe and assert for testing AI agents.
+
+---
+
+## Mock Servers
+
+Ready-to-go mock servers for 800+ real-world APIs. Stop juggling sandbox credentials.
+
+<Tabs>
+  <Tab title="The Problem">
+    Testing integrations means managing sandbox accounts for every service:
+
+    ```bash
+    STRIPE_TEST_KEY=sk_test_...
+    SHOPIFY_ACCESS_TOKEN=shpat_...
+    SENDGRID_API_KEY=SG....
+    LOOP_API_KEY=loop_test_...
+    # ... and 20 more
+    ```
+
+    Each service has different setup. Different rate limits. Different quirks.
+  </Tab>
+  <Tab title="The Solution">
+    One API key. 800+ services. Realistic responses.
+
+    ```bash
+    MOKRA_API_KEY=mk_live_...
+    # That's it.
+    ```
+
+    ```ruby
+    # Your code calls real endpoints
+    Stripe::Charge.create(amount: 5000, currency: "usd")
+    # => Returns realistic mock response
+    ```
+  </Tab>
+</Tabs>
+
+<Card title="Mock Servers Quickstart" icon="bolt" href="/mock-servers/quickstart">
+  Get realistic API responses in 2 minutes
 </Card>
 
-## Make it yours
+---
 
-Design a docs site that looks great and empowers your users.
+## MockWorld Tests
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+A testing framework for AI agents. Built on mock servers. Implements the [MockWorld Test paradigm](/mockworld-tests/the-paradigm) introduced by Peter Nsaka.
 
-## Create beautiful pages
+<Tabs>
+  <Tab title="The Problem">
+    AI agents are non-deterministic:
 
-Everything you need to create world-class documentation.
+    ```
+    Run 1: Agent takes 3 steps → creates refund
+    Run 2: Agent takes 7 steps → creates refund
+    Run 3: Agent takes 5 steps → creates refund
+    ```
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+    Traditional tests fail because they assert on specific steps.
 
-## Need inspiration?
+    And testing in production is dangerous — an agent might process 10,000 refunds before you catch the bug.
+  </Tab>
+  <Tab title="The Solution">
+    Assert on outcomes, not paths:
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
+    ```python
+    world = mockworld("Refund test", services=["stripe", "shopify"])
+
+    with world.run():
+        agent.invoke("Process refund for order #1234")
+        # Agent decides what to do
+
+    # See what happened
+    world.observe()
+    # => "Agent created refund of $50 in Stripe"
+
+    # Assert the outcome
+    world.assert("exactly one refund was created")
+    # Passes regardless of how many steps the agent took
+    ```
+  </Tab>
+</Tabs>
+
+<Card title="MockWorld Tests Quickstart" icon="flask-vial" href="/mockworld-tests/quickstart">
+  Test your first AI agent in 5 minutes
+</Card>
+
+---
+
+## Quick Start by Use Case
+
+| You are... | Building... | Start here |
+|------------|-------------|------------|
+| Backend developer | Stripe checkout, Shopify integration | [Mock Servers Quickstart](/mock-servers/quickstart) |
+| DevOps engineer | CI/CD pipeline tests | [Mock Servers Quickstart](/mock-servers/quickstart) |
+| AI engineer | Code generation AI | [AI Code Generation Guide](/guides/ai-code-generation) |
+| AI engineer | LangChain/CrewAI agent | [MockWorld Tests Quickstart](/mockworld-tests/quickstart) |
+| AI team lead | Agent safety validation | [AI Agents Guide](/guides/ai-agents) |
+
+---
+
+## Why Mokra
+
+<AccordionGroup>
+  <Accordion title="vs. Sandbox accounts (Stripe test mode, Shopify partners, etc.)">
+    **Sandboxes:** One credential per service. Rate limits. Polluted state from old tests. Different setup for each.
+
+    **Mokra:** One credential for 800+ services. No rate limits. Fresh state every time. Same setup for all.
+  </Accordion>
+
+  <Accordion title="vs. Mocking libraries (VCR, WebMock, responses)">
+    **Mocking libraries:** Record-and-playback. Stateless. Manual cassette management. Breaks when APIs change.
+
+    **Mokra:** Live mock servers. Stateful (create a payment, then refund it). Auto-maintained. Behaves like the real API.
+  </Accordion>
+
+  <Accordion title="vs. LangSmith (for AI agent testing)">
+    **LangSmith:** Traces LangChain callbacks. Shows LLM calls and tool invocations. Debug-focused.
+
+    **Mokra:** Operates at HTTP layer. Catches ALL network calls (not just LangChain). Outcome-focused assertions.
+
+    *Use both: LangSmith for debugging reasoning, Mokra for testing outcomes.*
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Supported Services
+
+800+ services available. Here are some popular ones:
+
+<CardGroup cols={4}>
+  <Card title="Stripe" href="/services/stripe">Payments</Card>
+  <Card title="Shopify" href="/services/shopify">E-commerce</Card>
+  <Card title="SendGrid" href="/services/sendgrid">Email</Card>
+  <Card title="Loop Returns" href="/services/loop-returns">Returns</Card>
+</CardGroup>
+
+<Card title="Browse all 800+ services" icon="grid" href="/services/overview">
+  See the full list of supported services
 </Card>

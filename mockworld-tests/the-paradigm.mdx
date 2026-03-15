@@ -1,0 +1,127 @@
+---
+title: "The MockWorld Test Paradigm"
+description: "A new paradigm for AI agent safety, introduced by Peter Nsaka"
+---
+
+# The MockWorld Test
+
+A new paradigm for testing AI agents, introduced by Peter Nsaka (former Shopify engineer, YC founder, CTO of Handled).
+
+> "Before an AI agent ever touches the real world, it should prove itself in a world that is identical to the real world in every meaningful way — but isn't."
+
+## The problem we're solving
+
+AI agents are no longer theoretical. They book flights, send emails, execute trades, process refunds, and interact with the real fabric of the digital world.
+
+But how do you test something that could burn the house down?
+
+### Traditional testing doesn't work
+
+Software engineers have long understood staging environments, mock APIs, and test suites. These were designed for **deterministic software** — code that, given the same input, always produces the same output.
+
+AI agents are not deterministic. They:
+- **Reason** about what to do
+- **Improvise** based on context
+- Take **different paths** to reach the same goal
+- Make **judgment calls** you can't fully predict
+
+You cannot write a traditional test that covers every case.
+
+### Production testing is dangerous
+
+When an AI agent makes a mistake at scale, the blast radius is exponential:
+
+- A financial agent might wipe out accounts
+- A healthcare agent might give dangerous advice
+- An enterprise agent might exfiltrate sensitive data
+- A support agent might send 10,000 wrong emails
+
+**The real world is not a testing environment.**
+
+## The solution: MockWorld Tests
+
+A **MockWorld** is a high-fidelity simulation of real-world services. Not a toy sandbox. Not a simplified replica. A mirror universe where every API behaves exactly as it does in production.
+
+The agent enters the MockWorld. It acts. It makes decisions. It calls APIs. And then we verify:
+
+- Did it do what it was meant to do?
+- Did it avoid what it was meant to avoid?
+- Did it behave safely when things went wrong?
+
+**The MockWorld Test is how you find out whether your AI agent is ready for the real world — before the real world finds out for you.**
+
+## How it's different
+
+The MockWorld Test doesn't try to anticipate every case. Instead, it:
+
+1. **Gives the agent a complete, realistic world** to operate in
+2. **Lets the agent reveal its own behavior** through actions
+3. **Verifies outcomes** regardless of the path taken
+
+It's the difference between asking someone a question in an interview and watching them actually do the job.
+
+## The vision
+
+Imagine this at scale:
+
+A library of MockWorlds — one for every major service an AI agent might interact with. A MockWorld for Gmail. A MockWorld for Stripe. A MockWorld for Salesforce, Slack, GitHub, AWS, and hundreds more.
+
+Each MockWorld stays in sync with its real-world counterpart. When the real Stripe API ships a new endpoint, the MockWorld reflects it. When Gmail changes its threading behavior, the MockWorld adapts.
+
+AI agents run through these MockWorlds before every deployment. They are scored not just on whether they completed the task, but on **how** they completed it:
+
+- Did they use minimum necessary permissions?
+- Did they handle errors gracefully?
+- Did they behave consistently across thousands of runs?
+- Did they avoid side effects they weren't supposed to create?
+
+**The MockWorld Test becomes a standard — like a safety rating for a car, or a clinical trial for a drug.**
+
+## The stakes
+
+We are building AI systems that will have real power in the real world.
+
+The optimists say AI will make us all more productive, more capable, more free. They might be right. But only if we:
+
+- Build it carefully
+- Test it seriously
+- Hold it to a standard worthy of the power we're giving it
+
+The MockWorld Test is part of that standard. It's not the whole answer. But it's a critical layer of infrastructure that the AI industry needs.
+
+## Mokra: The implementation
+
+Mokra implements MockWorld Tests with three primitives:
+
+### Mock
+
+800+ services available as high-fidelity mocks. Realistic, stateful responses.
+
+```ruby
+world = mockworld("Test", services: ["stripe", "shopify", "sendgrid"])
+```
+
+### Observe
+
+See what the agent did in plain English.
+
+```ruby
+world.observe
+# => "Agent created refund of $50 in Stripe"
+# => "Agent sent confirmation to ana@example.com"
+```
+
+### Assert
+
+Assert on outcomes, not reasoning paths.
+
+```ruby
+world.assert("exactly one refund was created")
+world.assert("customer was notified")
+```
+
+---
+
+<Card title="Get Started" icon="rocket" href="/mockworld-tests/quickstart">
+  Run your first MockWorld Test in 5 minutes
+</Card>

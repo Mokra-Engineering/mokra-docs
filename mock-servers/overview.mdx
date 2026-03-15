@@ -1,0 +1,141 @@
+---
+title: "Mock Servers Overview"
+description: "Ready-to-go mock servers for 800+ real-world APIs"
+---
+
+# Mock Servers
+
+Ready-to-go mock servers for 800+ real-world APIs. One credential. Realistic responses.
+
+## The problem
+
+Testing code that calls external APIs is painful:
+
+- **Stripe** needs test keys and a dashboard account
+- **Shopify** needs a partner account and test store
+- **SendGrid** needs API keys and domain verification
+- **Loop Returns** needs a merchant account and API access
+
+Each service has different setup, different rate limits, different quirks.
+
+You just want to test your code. Instead, you're managing credentials.
+
+```bash
+# The credential hell you're escaping
+STRIPE_TEST_KEY=sk_test_xxxxxxxxxxxxxxxxxxxx
+STRIPE_WEBHOOK_SECRET=whsec_...
+SHOPIFY_API_KEY=...
+SHOPIFY_API_SECRET=...
+SHOPIFY_ACCESS_TOKEN=shpat_...
+SENDGRID_API_KEY=SG....
+LOOP_API_KEY=loop_test_...
+# ... 15 more services
+```
+
+## The solution
+
+Mokra provides mock servers that behave like the real thing:
+
+```bash
+# One key for everything
+MOKRA_API_KEY=mk_live_...
+```
+
+- **One API key** gives you access to Stripe, Shopify, SendGrid, and 800+ more
+- **Realistic responses** with the same structure, fields, and behavior as production
+- **Stateful** — create a payment, then refund it. The refund knows about the payment.
+- **No rate limits** — test as fast as you can code
+- **Fresh state** — no pollution from previous tests
+
+## How it works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Your Code                                │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Stripe::Charge.create(amount: 5000, currency: "usd")│    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Mokra Interceptor                          │
+│                                                              │
+│   https://api.stripe.com/v1/charges                          │
+│                     ↓                                        │
+│   https://api.mokra.ai/mock/stripe/v1/charges                │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Mokra Mock Server                               │
+│                                                              │
+│   Returns realistic response:                                │
+│   {                                                          │
+│     "id": "ch_mock_abc123",                                  │
+│     "amount": 5000,                                          │
+│     "currency": "usd",                                       │
+│     "status": "succeeded"                                    │
+│   }                                                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Your code makes normal API calls. Mokra intercepts them and returns realistic responses.
+
+## Quick example
+
+```ruby
+require 'mockworld'
+
+Mockworld.configure do |config|
+  config.api_key = ENV['MOKRA_API_KEY']
+end
+
+# Your code stays exactly the same
+charge = Stripe::Charge.create(
+  amount: 5000,
+  currency: "usd",
+  source: "tok_visa"
+)
+
+# Returns a realistic charge object:
+# {
+#   "id": "ch_mock_abc123",
+#   "amount": 5000,
+#   "currency": "usd",
+#   "status": "succeeded",
+#   ...
+# }
+```
+
+## Who uses mock servers
+
+- **Backend developers** testing API integrations
+- **Frontend developers** building against API response shapes
+- **AI systems** that generate or test code
+- **CI/CD pipelines** that need reliable, fast tests
+- **QA engineers** testing integration flows
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="One Credential" icon="key">
+    One API key for 800+ services. No more credential management.
+  </Card>
+  <Card title="Realistic Responses" icon="check">
+    Same structure, fields, and types as production APIs.
+  </Card>
+  <Card title="Stateful" icon="database">
+    Create resources, then reference them. State persists within a session.
+  </Card>
+  <Card title="No Rate Limits" icon="bolt">
+    Test as fast as you can code. No throttling.
+  </Card>
+</CardGroup>
+
+## Next steps
+
+<Card title="Quickstart" icon="rocket" href="/mock-servers/quickstart">
+  Get realistic API responses in 2 minutes
+</Card>

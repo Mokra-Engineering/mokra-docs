@@ -1,0 +1,147 @@
+---
+title: "Supported Services"
+description: "800+ mock servers for real-world APIs"
+---
+
+# Supported Services
+
+Mokra provides mock servers for 800+ real-world APIs. One API key gives you access to all of them.
+
+## Popular services
+
+### Payments
+
+| Service | Description |
+|---------|-------------|
+| [Stripe](/services/stripe) | Payment processing, subscriptions, invoicing |
+| Square | Point of sale, payments |
+| PayPal | Online payments |
+| Braintree | Payment gateway |
+| Adyen | Global payments |
+
+### E-commerce
+
+| Service | Description |
+|---------|-------------|
+| [Shopify](/services/shopify) | E-commerce platform |
+| WooCommerce | WordPress e-commerce |
+| BigCommerce | E-commerce platform |
+| Magento | Enterprise e-commerce |
+
+### Email
+
+| Service | Description |
+|---------|-------------|
+| [SendGrid](/services/sendgrid) | Email delivery |
+| Mailgun | Email API |
+| Postmark | Transactional email |
+| Amazon SES | Email service |
+
+### Returns & Logistics
+
+| Service | Description |
+|---------|-------------|
+| [Loop Returns](/services/loop-returns) | Returns management |
+| Returnly | Returns platform |
+| ShipStation | Shipping |
+| EasyPost | Shipping API |
+
+### Communication
+
+| Service | Description |
+|---------|-------------|
+| Twilio | SMS, voice, video |
+| Slack | Team messaging |
+| Discord | Community chat |
+
+### Customer Support
+
+| Service | Description |
+|---------|-------------|
+| Zendesk | Support ticketing |
+| Intercom | Customer messaging |
+| Freshdesk | Help desk |
+
+### CRM
+
+| Service | Description |
+|---------|-------------|
+| Salesforce | CRM platform |
+| HubSpot | Marketing & CRM |
+| Pipedrive | Sales CRM |
+
+### Cloud Infrastructure
+
+| Service | Description |
+|---------|-------------|
+| AWS | Amazon Web Services |
+| Google Cloud | GCP APIs |
+| Azure | Microsoft cloud |
+
+### Developer Tools
+
+| Service | Description |
+|---------|-------------|
+| GitHub | Code hosting |
+| GitLab | DevOps platform |
+| Jira | Project management |
+
+## Using a service
+
+### 1. Add to your MockWorld
+
+```ruby
+world = mockworld(
+  name: "My test",
+  services: ["stripe", "shopify", "sendgrid"]
+)
+```
+
+### 2. Make API calls
+
+```ruby
+world.run do
+  # Calls are automatically intercepted
+  Stripe::Charge.create(amount: 5000, currency: "usd")
+  ShopifyAPI::Order.find(id: "123")
+end
+```
+
+### 3. That's it
+
+No service-specific credentials needed. Mokra handles routing and responses.
+
+## Service coverage
+
+Each mock server provides:
+
+- **All major endpoints** — CRUD operations, list/search, webhooks
+- **Realistic responses** — Same structure as production
+- **Stateful behavior** — Create, retrieve, update, delete
+- **Error simulation** — Test error handling
+
+## Requesting new services
+
+Don't see a service you need? [Request it here](https://app.mokra.ai/request-service).
+
+Priority is given to:
+- Commonly used APIs
+- Services with public documentation
+- Enterprise customer requests
+
+## Service-specific documentation
+
+<CardGroup cols={2}>
+  <Card title="Stripe" icon="stripe" href="/services/stripe">
+    Payments, subscriptions, invoicing
+  </Card>
+  <Card title="Shopify" icon="shopify" href="/services/shopify">
+    Orders, products, customers
+  </Card>
+  <Card title="SendGrid" icon="envelope" href="/services/sendgrid">
+    Email sending, templates
+  </Card>
+  <Card title="Loop Returns" icon="rotate-left" href="/services/loop-returns">
+    Returns management
+  </Card>
+</CardGroup>

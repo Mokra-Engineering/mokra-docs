@@ -1,0 +1,219 @@
+---
+title: "AI Code Generation"
+description: "For developers building AI that writes or tests code"
+---
+
+# AI Code Generation
+
+You're building AI that generates or modifies code.
+The AI needs to know what APIs return.
+You need to verify the generated code actually works.
+
+**Mokra lets your AI build against real API shapes.**
+
+## The challenge
+
+Your AI generates code like this:
+
+```python
+def charge_customer(customer_id: str, amount: int) -> str:
+    response = stripe.Charge.create(
+        customer=customer_id,
+        amount=amount,
+        currency="usd"
+    )
+    return response["id"]  # AI needs to know this field exists
+```
+
+For the AI to write correct code, it needs to know:
+- What fields does Stripe return?
+- What's the response structure?
+- Does the code actually work?
+
+But you can't give your AI real Stripe credentials.
+
+## The solution
+
+1. AI generates code
+2. Code runs against Mokra mock servers
+3. You observe what API calls were made
+4. AI iterates based on real behavior
+
+```python
+from mokra import mockworld
+
+# AI generates integration code
+generated_code = ai.generate("""
+    Write a function that:
+    1. Creates a Stripe customer
+    2. Charges them $50
+    3. Returns the charge ID
+""")
+
+# Test the generated code in a MockWorld
+world = mockworld(name="AI code test", services=["stripe"])
+
+with world.run():
+    # Execute the AI-generated code
+    exec(generated_code)
+
+# See what API calls the code made
+world.observe()
+# => "POST stripe/v1/customers - Created customer cus_mock_123"
+# => "POST stripe/v1/charges - Created charge for $50.00"
+```
+
+## Real response shapes
+
+When your AI's code calls mock servers, it gets realistic responses:
+
+```python
+# AI-generated code calls Stripe
+response = stripe.Customer.create(email="test@example.com")
+
+# Gets back real structure:
+{
+  "id": "cus_mock_abc123",
+  "object": "customer",
+  "email": "test@example.com",
+  "created": 1678901234,
+  "livemode": false,
+  "metadata": {},
+  ...
+}
+```
+
+Your AI can learn from these responses and generate correct field access.
+
+## Observe what happened
+
+After running generated code, see exactly what it did:
+
+```python
+world.observe()
+```
+
+Output:
+```
+POST stripe/v1/customers
+  → Created customer cus_mock_abc123
+
+POST stripe/v1/charges
+  → Created charge ch_mock_xyz789 for $50.00
+
+GET stripe/v1/charges/ch_mock_xyz789
+  → Retrieved charge details
+```
+
+Your AI can verify:
+- Customer was created before charge (correct order)
+- Charge references the customer (correct linking)
+- Amount is correct ($50)
+
+## Self-correcting AI example
+
+```python
+def generate_and_verify(task: str, max_attempts: int = 3) -> str:
+    for attempt in range(max_attempts):
+        # AI generates code
+        code = ai.generate(task)
+
+        # Test in MockWorld
+        world = mockworld(name="Test", services=["stripe"])
+
+        try:
+            with world.run():
+                result = exec(code)
+
+            # Check results
+            observations = world.observe(print=False)
+
+            if "error" not in observations.lower():
+                print(f"Success on attempt {attempt + 1}")
+                return code
+
+            # AI learns from failure
+            ai.feedback(f"Code produced errors: {observations}")
+
+        except Exception as e:
+            ai.feedback(f"Code crashed: {e}")
+
+    raise Exception("Could not generate working code")
+
+
+# Usage
+working_code = generate_and_verify("""
+    Create a Stripe checkout session for a $99 product
+""")
+```
+
+## Fast iteration
+
+Mock servers respond instantly. Your AI can:
+
+1. Generate code
+2. Test it
+3. See results
+4. Fix issues
+5. Test again
+
+All in seconds, not minutes. No rate limits. No credential management.
+
+## Using with LLM frameworks
+
+### LangChain
+
+```python
+from langchain.agents import tool
+from mokra import mockworld
+
+@tool
+def test_stripe_code(code: str) -> str:
+    """Test generated Stripe integration code"""
+    world = mockworld(name="Code test", services=["stripe"])
+
+    try:
+        with world.run():
+            exec(code)
+        return world.observe(print=False)
+    except Exception as e:
+        return f"Error: {e}"
+```
+
+### CrewAI
+
+```python
+from crewai import Task
+
+code_testing_task = Task(
+    description="Test the generated code against Mokra mock servers",
+    expected_output="Verification that the code makes correct API calls"
+)
+```
+
+## Key benefits for AI code generation
+
+| Aspect | Without Mokra | With Mokra |
+|--------|---------------|------------|
+| API response shapes | Hallucinated | Real |
+| Code verification | Manual review | Automated |
+| Credentials | Security risk | Safe mocks |
+| Iteration speed | Slow (rate limits) | Fast |
+| Feedback loop | Broken | Complete |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Mock Servers Quickstart" icon="bolt" href="/mock-servers/quickstart">
+    Get started in 2 minutes
+  </Card>
+  <Card title="Observe" icon="eye" href="/mockworld-tests/observe">
+    See what code did in detail
+  </Card>
+  <Card title="All Services" icon="grid" href="/services/overview">
+    Browse 800+ services
+  </Card>
+  <Card title="AI Agents Guide" icon="robot" href="/guides/ai-agents">
+    For autonomous agents
+  </Card>
+</CardGroup>

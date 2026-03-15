@@ -1,0 +1,219 @@
+---
+title: "Testing API Integrations"
+description: "For developers building traditional code that calls external APIs"
+---
+
+# Testing API Integrations
+
+You're building code that calls Stripe, Shopify, SendGrid, or other external APIs.
+You need realistic responses to test against.
+You don't want to manage sandbox credentials.
+
+**Mokra gives you mock servers that just work.**
+
+## Before Mokra
+
+```bash
+# .env file from hell
+STRIPE_TEST_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+SHOPIFY_API_KEY=...
+SHOPIFY_API_SECRET=...
+SHOPIFY_ACCESS_TOKEN=...
+SENDGRID_API_KEY=SG....
+TWILIO_ACCOUNT_SID=...
+TWILIO_AUTH_TOKEN=...
+LOOP_API_KEY=...
+# ... and more
+```
+
+Each service requires:
+- Creating a test/sandbox account
+- Generating API credentials
+- Configuring webhooks
+- Managing rate limits
+- Dealing with polluted test data
+
+## After Mokra
+
+```bash
+# .env
+MOKRA_API_KEY=mk_live_...
+# That's it.
+```
+
+One API key. 800+ services. Realistic responses.
+
+## How it works
+
+1. Configure Mokra with your API key
+2. Make normal API calls to real endpoints
+3. Mokra intercepts and returns realistic mock responses
+
+```ruby
+require 'mockworld'
+
+Mockworld.configure do |config|
+  config.api_key = ENV['MOKRA_API_KEY']
+end
+
+# Your code stays exactly the same
+charge = Stripe::Charge.create(
+  amount: 5000,
+  currency: "usd",
+  source: "tok_visa"
+)
+
+puts charge.id      # => "ch_mock_abc123"
+puts charge.status  # => "succeeded"
+```
+
+Your code doesn't change. It still calls `api.stripe.com`. Mokra handles the interception.
+
+## Common use cases
+
+### Testing checkout flows
+
+```ruby
+def test_checkout_creates_charge
+  result = CheckoutService.process(cart: cart, customer: customer)
+
+  assert result.success?
+  assert result.charge_id.present?
+  assert_equal 5000, result.amount_charged
+end
+```
+
+No Stripe sandbox needed. The test runs instantly.
+
+### Testing multi-service workflows
+
+```ruby
+def test_order_fulfillment
+  # Creates order in Shopify, charges via Stripe, sends email via SendGrid
+  result = OrderService.fulfill(order_id: "123")
+
+  assert result.shopify_order_updated?
+  assert result.payment_captured?
+  assert result.confirmation_email_sent?
+end
+```
+
+All three services mocked with one API key.
+
+### Testing error handling
+
+```ruby
+def test_handles_card_declined
+  # Mokra can simulate specific error scenarios
+  Mokra.simulate_error("stripe", "card_declined")
+
+  result = CheckoutService.process(cart: cart)
+
+  assert result.error?
+  assert_equal "card_declined", result.error_code
+  assert result.customer_notified?
+end
+```
+
+### Testing webhooks
+
+```ruby
+def test_handles_refund_webhook
+  # Mokra can send test webhooks to your endpoint
+  Mokra.trigger_webhook("stripe", "charge.refunded", {
+    charge_id: "ch_test_123",
+    amount_refunded: 5000
+  })
+
+  order = Order.find_by(stripe_charge_id: "ch_test_123")
+  assert_equal "refunded", order.status
+end
+```
+
+## Stateful behavior
+
+Mock servers maintain state within a session:
+
+```ruby
+# Create a customer
+customer = Stripe::Customer.create(email: "ana@example.com")
+
+# Create a payment for that customer
+payment = Stripe::PaymentIntent.create(
+  amount: 5000,
+  currency: "usd",
+  customer: customer.id  # References the customer!
+)
+
+# Refund the payment
+refund = Stripe::Refund.create(payment_intent: payment.id)
+# Works correctly - refund references the payment
+```
+
+## Seeding test data
+
+Pre-populate mock servers with specific data:
+
+```ruby
+Mokra.seed("stripe") do |s|
+  s.customers.create(id: "cus_test_ana", email: "ana@example.com")
+  s.products.create(id: "prod_widget", name: "Widget", price: 5000)
+end
+
+Mokra.seed("shopify") do |s|
+  s.orders.create(id: "order_123", total: 150.00, status: "paid")
+end
+
+# Now your tests can reference this data
+customer = Stripe::Customer.retrieve("cus_test_ana")
+order = ShopifyAPI::Order.find(id: "order_123")
+```
+
+## Running in CI/CD
+
+```yaml
+# .github/workflows/test.yml
+name: Tests
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        env:
+          MOKRA_API_KEY: ${{ secrets.MOKRA_API_KEY }}
+        run: bundle exec rspec
+```
+
+No sandbox credentials in CI. No flaky tests from rate limits. Just reliable, fast tests.
+
+## What you get
+
+| Feature | Sandbox | Mokra |
+|---------|---------|-------|
+| Setup time | Hours per service | 2 minutes total |
+| Credentials | One per service | One for all |
+| Rate limits | Often restrictive | None |
+| Test data | Polluted over time | Fresh each run |
+| Speed | Network latency | Instant |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Mock Servers Quickstart" icon="bolt" href="/mock-servers/quickstart">
+    Get started in 2 minutes
+  </Card>
+  <Card title="Stateful Mocks" icon="database" href="/mock-servers/stateful-mocks">
+    Learn how state works
+  </Card>
+  <Card title="Seeding Data" icon="seedling" href="/mock-servers/seeding-data">
+    Pre-populate test data
+  </Card>
+  <Card title="All Services" icon="grid" href="/services/overview">
+    Browse 800+ services
+  </Card>
+</CardGroup>

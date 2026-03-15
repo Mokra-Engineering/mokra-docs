@@ -1,0 +1,241 @@
+---
+title: "Assert"
+description: "Verify outcomes, not reasoning paths"
+---
+
+# Assert
+
+Assert on outcomes. Not on the steps the agent took to get there.
+
+## The core idea
+
+AI agents are non-deterministic. They might take different paths to reach the same outcome:
+
+```
+Run 1: Agent takes 3 steps → creates refund
+Run 2: Agent takes 7 steps → creates refund
+Run 3: Agent takes 5 steps → creates refund
+```
+
+**Traditional test:** Fails because the agent took a different path
+
+**MockWorld assert:** Passes because the outcome is correct
+
+## Basic usage
+
+<CodeGroup>
+```ruby Ruby
+world.run do
+  agent.process_refund("order-1234")
+end
+
+# Natural language assertions
+world.assert("a refund was created")
+world.assert("refund amount is $150")
+world.assert("customer was notified via email")
+```
+
+```python Python
+with world.run():
+    agent.process_refund("order-1234")
+
+# Natural language assertions
+world.assert_("a refund was created")
+world.assert_("refund amount is $150")
+world.assert_("customer was notified via email")
+```
+</CodeGroup>
+
+**Output:**
+```
+✓ a refund was created
+✓ refund amount is $150
+✓ customer was notified via email
+```
+
+## Natural language assertions
+
+Mokra understands what you mean:
+
+```ruby
+# All of these work
+world.assert("a refund was created")
+world.assert("exactly one refund was created")
+world.assert("refund amount is $150")
+world.assert("refund amount matches order total")
+world.assert("customer received an email")
+world.assert("no duplicate refunds exist")
+world.assert("no errors occurred")
+```
+
+The assertion engine looks at the MockWorld state and determines if the condition is met.
+
+## Scoped assertions
+
+Assert against a specific service:
+
+```ruby
+# Assert against a specific service
+world.assert("a return was created", service: "loop-returns")
+
+# Assert against a specific mock server
+world.assert("a charge was created", mock_server_id: "ms_abc123")
+```
+
+## Programmatic assertions
+
+For complex validations, access the state directly:
+
+<CodeGroup>
+```ruby Ruby
+state = world.state
+
+# Direct state assertions
+assert state["stripe"]["refunds"].count == 1
+assert state["stripe"]["refunds"][0]["amount"] == 15000
+assert state["sendgrid"]["emails"].count == 1
+
+# Check no unintended side effects
+assert state["stripe"]["charges"].count == 0  # No new charges
+```
+
+```python Python
+state = world.state()
+
+# Direct state assertions
+assert state["stripe"]["refunds"].count == 1
+assert state["stripe"]["refunds"][0]["amount"] == 15000
+assert state["sendgrid"]["emails"].count == 1
+
+# Check no unintended side effects
+assert state["stripe"]["charges"].count == 0  # No new charges
+```
+</CodeGroup>
+
+## Common assertion patterns
+
+### Exactly one
+
+```ruby
+world.assert("exactly one refund was created")
+```
+
+### Amount validation
+
+```ruby
+world.assert("refund amount is $50")
+world.assert("total charges equal $100")
+```
+
+### No duplicates
+
+```ruby
+world.assert("no duplicate refunds exist")
+world.assert("customer was charged only once")
+```
+
+### Side effect prevention
+
+```ruby
+world.assert("no emails were sent to other customers")
+world.assert("no data was deleted")
+```
+
+### Error handling
+
+```ruby
+world.assert("no errors occurred")
+world.assert("agent handled the error gracefully")
+```
+
+## Testing safety boundaries
+
+Verify your agent stays within bounds:
+
+```ruby
+world.run do
+  agent.invoke("Process all refunds from last month")
+end
+
+# Agent should refuse bulk operations without approval
+world.assert("fewer than 5 refunds were created")
+world.assert("agent requested human approval")
+```
+
+## Testing error scenarios
+
+```ruby
+# Seed a scenario where the order doesn't exist
+world.seed("""
+  shopify:
+    orders: []
+""")
+
+world.run do
+  agent.invoke("Refund order #9999")
+end
+
+world.assert("no refund was created")
+world.assert("agent reported order not found")
+```
+
+## Combining with observe
+
+Always observe before asserting to understand what happened:
+
+```ruby
+world.run do
+  agent.invoke("Process refund")
+end
+
+# First, see what happened
+world.observe
+
+# Then, assert on outcomes
+world.assert("exactly one refund was created")
+world.assert("customer was notified")
+```
+
+## Best practices
+
+### 1. Assert outcomes, not implementation
+
+```ruby
+# Bad - tests implementation details
+world.assert("agent called get_order tool first")
+world.assert("agent made exactly 4 tool calls")
+
+# Good - tests outcomes
+world.assert("order was retrieved")
+world.assert("refund was created for correct amount")
+```
+
+### 2. Test for absence of bad behavior
+
+```ruby
+# Ensure nothing bad happened
+world.assert("no duplicate refunds")
+world.assert("no charges were created")
+world.assert("no emails to wrong recipients")
+```
+
+### 3. Be specific about quantities
+
+```ruby
+# Vague
+world.assert("refunds were created")
+
+# Specific
+world.assert("exactly one refund was created")
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Observe" icon="eye" href="/mockworld-tests/observe">
+    See what your agent did
+  </Card>
+  <Card title="AI Agents Guide" icon="robot" href="/guides/ai-agents">
+    Complete testing patterns for agents
+  </Card>
+</CardGroup>

@@ -1,0 +1,242 @@
+---
+title: "Seeding Data"
+description: "Pre-populate mock servers with test data"
+---
+
+# Seeding Data
+
+Pre-populate mock servers with specific data before running your tests.
+
+## Why seed data
+
+Sometimes you need specific data to exist before your test runs:
+
+- Test a refund flow (need an existing payment)
+- Test order fulfillment (need an existing order)
+- Test customer lookup (need existing customers)
+
+## Basic seeding
+
+<CodeGroup>
+```ruby Ruby
+world = mockworld(name: "Refund test", services: ["stripe", "shopify"])
+
+# Seed data before running
+world.seed do |s|
+  s.stripe.customers.create(
+    id: "cus_ana",
+    email: "ana@example.com",
+    name: "Ana Smith"
+  )
+
+  s.stripe.payment_intents.create(
+    id: "pi_test123",
+    amount: 15000,
+    currency: "usd",
+    status: "succeeded",
+    customer: "cus_ana"
+  )
+
+  s.shopify.orders.create(
+    id: "order_1234",
+    total_price: "150.00",
+    financial_status: "paid",
+    customer: { email: "ana@example.com" }
+  )
+end
+
+# Now run your test
+world.run do
+  # Your code can reference this seeded data
+  order = ShopifyAPI::Order.find(id: "order_1234")
+  refund = Stripe::Refund.create(payment_intent: "pi_test123")
+end
+```
+
+```python Python
+world = mockworld(name="Refund test", services=["stripe", "shopify"])
+
+# Seed data before running
+world.seed("""
+  stripe:
+    customers:
+      - id: cus_ana
+        email: ana@example.com
+        name: Ana Smith
+
+    payment_intents:
+      - id: pi_test123
+        amount: 15000
+        currency: usd
+        status: succeeded
+        customer: cus_ana
+
+  shopify:
+    orders:
+      - id: order_1234
+        total_price: "150.00"
+        financial_status: paid
+        customer:
+          email: ana@example.com
+""")
+
+# Now run your test
+with world.run():
+    order = shopify.Order.find("order_1234")
+    refund = stripe.Refund.create(payment_intent="pi_test123")
+```
+</CodeGroup>
+
+## YAML format
+
+You can also seed using YAML strings:
+
+```ruby
+world.seed(<<~YAML)
+  stripe:
+    customers:
+      - id: cus_ana
+        email: ana@example.com
+        name: Ana Smith
+
+    charges:
+      - id: ch_test
+        amount: 5000
+        currency: usd
+        customer: cus_ana
+        status: succeeded
+
+  shopify:
+    orders:
+      - id: "1234"
+        total_price: "50.00"
+        line_items:
+          - title: "Widget"
+            quantity: 1
+            price: "50.00"
+YAML
+```
+
+## Seeding specific scenarios
+
+### Test refund flow
+
+```ruby
+world.seed do |s|
+  s.stripe.payment_intents.create(
+    id: "pi_refundable",
+    amount: 10000,
+    status: "succeeded"
+  )
+end
+
+world.run do
+  agent.invoke("Refund payment pi_refundable")
+end
+
+world.assert("refund was created for $100")
+```
+
+### Test order not found
+
+```ruby
+# Seed empty state
+world.seed do |s|
+  s.shopify.orders.clear  # No orders exist
+end
+
+world.run do
+  agent.invoke("Process order #9999")
+end
+
+world.assert("agent reported order not found")
+```
+
+### Test multiple customers
+
+```ruby
+world.seed do |s|
+  ["ana", "bob", "carol"].each do |name|
+    s.stripe.customers.create(
+      id: "cus_#{name}",
+      email: "#{name}@example.com"
+    )
+  end
+end
+
+world.run do
+  # Test with multiple customers
+end
+```
+
+## Referencing seeded data
+
+Seeded data can reference other seeded data:
+
+```ruby
+world.seed do |s|
+  # Create customer first
+  s.stripe.customers.create(
+    id: "cus_test",
+    email: "test@example.com"
+  )
+
+  # Payment references customer
+  s.stripe.payment_intents.create(
+    id: "pi_test",
+    customer: "cus_test",  # References seeded customer
+    amount: 5000
+  )
+
+  # Charge references payment
+  s.stripe.charges.create(
+    id: "ch_test",
+    payment_intent: "pi_test",  # References seeded payment
+    amount: 5000
+  )
+end
+```
+
+## Seed from fixtures
+
+Load seed data from fixture files:
+
+```ruby
+# fixtures/stripe_data.yml
+customers:
+  - id: cus_fixture
+    email: fixture@example.com
+
+charges:
+  - id: ch_fixture
+    amount: 5000
+```
+
+```ruby
+world.seed_from_file("stripe", "fixtures/stripe_data.yml")
+```
+
+## Verifying seeded state
+
+Check that seeding worked:
+
+```ruby
+world.seed do |s|
+  s.stripe.customers.create(id: "cus_test", email: "test@example.com")
+end
+
+state = world.state
+puts state["stripe"]["customers"].count  # => 1
+puts state["stripe"]["customers"][0]["email"]  # => "test@example.com"
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Stateful Mocks" icon="database" href="/mock-servers/stateful-mocks">
+    How state management works
+  </Card>
+  <Card title="Assert" icon="check" href="/mockworld-tests/assert">
+    Assert on seeded state
+  </Card>
+</CardGroup>

@@ -1,0 +1,260 @@
+---
+title: "Ruby SDK"
+description: "Official Ruby SDK for Mokra"
+---
+
+# Ruby SDK
+
+The official Ruby SDK for Mokra mock servers and MockWorld Tests.
+
+## Installation
+
+```bash
+gem install mockworld
+```
+
+Or add to your Gemfile:
+
+```ruby
+gem 'mockworld'
+```
+
+## Configuration
+
+```ruby
+require 'mockworld'
+
+Mockworld.configure do |config|
+  config.base_url = "https://api.mokra.ai/api"
+  config.api_key = ENV['MOKRA_API_KEY']
+end
+```
+
+### Environment variables
+
+```bash
+export MOKRA_API_KEY="mk_live_..."
+export MOCKWORLD_BASE_URL="https://api.mokra.ai/api"  # Optional
+```
+
+### Authentication styles
+
+```ruby
+# Default: X-API-Key header
+Mockworld.configure do |config|
+  config.api_key = "your-api-key"
+  # Sends: X-API-Key: your-api-key
+end
+
+# Bearer token
+Mockworld.configure do |config|
+  config.api_key = "your-token"
+  config.auth_style = :bearer
+  # Sends: Authorization: Bearer your-token
+end
+```
+
+## Mock Servers
+
+### Basic usage
+
+Once configured, HTTP calls are automatically intercepted:
+
+```ruby
+# Your code makes normal API calls
+charge = Stripe::Charge.create(amount: 5000, currency: "usd")
+# => Returns realistic mock response
+```
+
+### Direct HTTP calls
+
+```ruby
+require 'net/http'
+
+uri = URI("https://api.stripe.com/v1/charges")
+http = Net::HTTP.new(uri.host, uri.port)
+http.use_ssl = true
+
+request = Net::HTTP::Post.new(uri)
+request["Authorization"] = "Bearer sk_test_anything"
+request.body = URI.encode_www_form({ amount: 5000, currency: "usd" })
+
+response = http.request(request)
+# => Intercepted and returns mock response
+```
+
+## MockWorld Tests
+
+### Creating a world
+
+```ruby
+world = mockworld(name: "My test", services: ["stripe", "shopify"])
+```
+
+With keyword arguments:
+
+```ruby
+world = mockworld(
+  name: "My test",
+  services: ["stripe", "shopify", "sendgrid"]
+)
+```
+
+### Running code
+
+```ruby
+world.run do
+  # Your code here
+  # All HTTP calls are intercepted
+  Stripe::Charge.create(amount: 5000, currency: "usd")
+end
+```
+
+With access to services:
+
+```ruby
+world.run do |services|
+  # services contains mock server info
+  puts services[:stripe][:mock_server_id]
+end
+```
+
+### Observing
+
+```ruby
+# Print to console
+world.observe
+
+# Return as string
+log = world.observe(print: false)
+Rails.logger.info(log)
+
+# Filter by service
+world.observe(service: "stripe")
+```
+
+### Asserting
+
+```ruby
+# Natural language
+world.assert("a refund was created")
+world.assert("refund amount is $50")
+
+# Multiple assertions
+world.assert(
+  "exactly one refund was created",
+  "customer was notified",
+  "no errors occurred"
+)
+
+# With service scope
+world.assert("a return was created", service: "loop-returns")
+```
+
+### Accessing state
+
+```ruby
+state = world.state
+
+# By service
+state["stripe"]["customers"].count
+state["stripe"]["charges"][0]["amount"]
+
+# Find by ID
+state["stripe"]["customers"].find_by_id("cus_abc123")
+```
+
+### Seeding
+
+```ruby
+world.seed do |s|
+  s.stripe.customers.create(
+    id: "cus_test",
+    email: "test@example.com"
+  )
+
+  s.shopify.orders.create(
+    id: "order_123",
+    total_price: "150.00"
+  )
+end
+```
+
+## Service mappings
+
+```ruby
+# Add custom mapping
+Mockworld::ServiceMapper.add_mapping("api.myservice.com", "myservice")
+
+# Load from YAML
+Mockworld::ServiceMapper.load_mappings("path/to/mappings.yml")
+```
+
+## Example: RSpec integration
+
+```ruby
+# spec/support/mokra.rb
+RSpec.configure do |config|
+  config.before(:suite) do
+    Mockworld.configure do |c|
+      c.api_key = ENV['MOKRA_API_KEY']
+    end
+  end
+end
+
+# spec/integration/refund_spec.rb
+RSpec.describe RefundService do
+  it "creates a refund" do
+    world = mockworld(name: "Refund test", services: ["stripe"])
+
+    world.run do
+      RefundService.process(payment_id: "pi_123", amount: 5000)
+    end
+
+    world.assert("a refund was created")
+    world.assert("refund amount is $50")
+  end
+end
+```
+
+## API Reference
+
+### `mockworld(name:, services:)`
+
+Creates a new MockWorld.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | String | Name for the world (for logging) |
+| `services` | Array | Services to include |
+
+### `world.run { ... }`
+
+Runs code with HTTP interception enabled.
+
+### `world.observe(print: true, service: nil)`
+
+Returns/prints observations.
+
+### `world.assert(*assertions, service: nil)`
+
+Verifies assertions against world state.
+
+### `world.state`
+
+Returns the current state object.
+
+### `world.seed { |s| ... }`
+
+Pre-populates state before running.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Mock Servers Quickstart" icon="bolt" href="/mock-servers/quickstart">
+    Get started
+  </Card>
+  <Card title="MockWorld Tests Quickstart" icon="flask-vial" href="/mockworld-tests/quickstart">
+    Test AI agents
+  </Card>
+</CardGroup>

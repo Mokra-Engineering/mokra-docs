@@ -1,0 +1,149 @@
+---
+title: "SendGrid"
+description: "Mock server for SendGrid email API"
+---
+
+# SendGrid Mock Server
+
+Full mock implementation of the SendGrid API. Send emails, manage templates, and more.
+
+## Supported endpoints
+
+### Mail Send
+
+| Endpoint | Methods |
+|----------|---------|
+| `/v3/mail/send` | POST |
+
+### Contacts
+
+| Endpoint | Methods |
+|----------|---------|
+| `/v3/marketing/contacts` | GET, PUT, DELETE |
+| `/v3/marketing/lists` | GET, POST, DELETE |
+
+### Templates
+
+| Endpoint | Methods |
+|----------|---------|
+| `/v3/templates` | GET, POST |
+| `/v3/templates/{id}` | GET, PATCH, DELETE |
+
+## Quick example
+
+```ruby
+require 'mockworld'
+require 'sendgrid-ruby'
+
+Mockworld.configure do |config|
+  config.api_key = ENV['MOKRA_API_KEY']
+end
+
+sg = SendGrid::API.new(api_key: "any_key")
+
+# Send an email
+data = {
+  personalizations: [
+    {
+      to: [{ email: "recipient@example.com" }],
+      subject: "Hello from Mokra"
+    }
+  ],
+  from: { email: "sender@example.com" },
+  content: [
+    { type: "text/plain", value: "This is a test email." }
+  ]
+}
+
+response = sg.client.mail._("send").post(request_body: data)
+# => 202 Accepted
+```
+
+## Stateful behavior
+
+Emails sent are recorded in state:
+
+```ruby
+world = mockworld(name: "Email test", services: ["sendgrid"])
+
+world.run do
+  sg.client.mail._("send").post(request_body: {
+    personalizations: [{ to: [{ email: "test@example.com" }] }],
+    from: { email: "sender@example.com" },
+    subject: "Test",
+    content: [{ type: "text/plain", value: "Hello" }]
+  })
+end
+
+# Check what was sent
+state = world.state
+state["sendgrid"]["emails"].count  # => 1
+state["sendgrid"]["emails"][0]["to"]  # => "test@example.com"
+```
+
+## Using with MockWorld Tests
+
+```ruby
+world = mockworld(name: "Notification test", services: ["sendgrid"])
+
+world.run do
+  NotificationService.send_welcome_email("newuser@example.com")
+end
+
+world.observe
+# => "Sent email to newuser@example.com"
+# =>   Subject: "Welcome to our service"
+
+world.assert("one email was sent")
+world.assert("email was sent to newuser@example.com")
+```
+
+## Seeding data
+
+```ruby
+world.seed do |s|
+  s.sendgrid.templates.create(
+    id: "d-abc123",
+    name: "Welcome Email",
+    generation: "dynamic"
+  )
+
+  s.sendgrid.contacts.create(
+    email: "existing@example.com",
+    first_name: "Existing",
+    last_name: "User"
+  )
+end
+```
+
+## Template support
+
+```ruby
+# Send using a template
+data = {
+  personalizations: [
+    {
+      to: [{ email: "recipient@example.com" }],
+      dynamic_template_data: {
+        name: "Ana",
+        order_id: "12345"
+      }
+    }
+  ],
+  from: { email: "sender@example.com" },
+  template_id: "d-abc123"
+}
+
+sg.client.mail._("send").post(request_body: data)
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Mock Servers Quickstart" icon="bolt" href="/mock-servers/quickstart">
+    Get started
+  </Card>
+  <Card title="All Services" icon="grid" href="/services/overview">
+    Browse all services
+  </Card>
+</CardGroup>

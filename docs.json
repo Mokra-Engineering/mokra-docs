@@ -1,68 +1,94 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Mokra",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#2563EB",
+    "light": "#3B82F6",
+    "dark": "#1D4ED8"
   },
   "favicon": "/favicon.svg",
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
               "index",
-              "quickstart",
-              "development"
+              "mock-servers/quickstart",
+              "mockworld-tests/quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Mock Servers",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "mock-servers/overview",
+              "mock-servers/how-it-works",
+              "mock-servers/stateful-mocks",
+              "mock-servers/seeding-data"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "MockWorld Tests",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "mockworld-tests/overview",
+              "mockworld-tests/the-paradigm",
+              "mockworld-tests/observe",
+              "mockworld-tests/assert"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Guides",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/api-integrations",
+              "guides/ai-code-generation",
+              "guides/ai-agents",
+              "guides/ci-cd"
+            ]
+          },
+          {
+            "group": "SDKs",
+            "pages": [
+              "sdks/ruby",
+              "sdks/python",
+              "sdks/typescript"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Services",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Supported Services",
+            "pages": [
+              "services/overview",
+              "services/stripe",
+              "services/shopify",
+              "services/sendgrid",
+              "services/loop-returns"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "API Documentation",
             "pages": [
               "api-reference/introduction"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Endpoints",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/endpoint/create-world",
+              "api-reference/endpoint/mock-server",
+              "api-reference/endpoint/observations",
+              "api-reference/endpoint/assertions"
             ]
           }
         ]
@@ -71,14 +97,14 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "Dashboard",
+          "href": "https://app.mokra.ai",
+          "icon": "gauge"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "GitHub",
+          "href": "https://github.com/AginSquash/mockworld-ruby",
+          "icon": "github"
         }
       ]
     }
@@ -90,44 +116,29 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Blog",
+        "href": "https://mokra.ai/blog"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Get API Key",
+      "href": "https://app.mokra.ai/signup"
     }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/handled-engineering",
-      "github": "https://github.com/handled-engineering",
-      "linkedin": "https://linkedin.com/company/handled-engineering"
+      "x": "https://x.com/mokaborhq",
+      "github": "https://github.com/AginSquash/mockworld-ruby",
+      "linkedin": "https://linkedin.com/company/mokra-ai"
     }
   },
   "api": {
-    "baseUrl": "https://api.usehandled.io/api/v1/ipaas",
+    "baseUrl": "https://api.mokra.ai/api",
     "auth": {
-      "method": "bearer",
-      "name": "Authorization"
+      "method": "key",
+      "name": "X-API-Key"
     }
   },
-  "description": "Integration infrastructure for commerce. Connect to 150+ ecommerce, WMS, carrier, and logistics services through a single unified API.",
-  "head": [
-    "<script src=\"https://app.mokra.ai/embed.js\" data-service=\"loop-returns\" data-position=\"bottom-right\" data-button-text=\"Try the API\" data-button-color=\"#000000\" data-theme=\"light\"></script>"
-  ]
+  "description": "Mock servers for 800+ APIs. MockWorld Tests for AI agents. One credential. Realistic responses. Test with confidence."
 }

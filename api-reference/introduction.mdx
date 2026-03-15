@@ -1,33 +1,109 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: "API Reference"
+description: "Mokra HTTP API documentation"
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+# API Reference
 
-## Welcome
+The Mokra API allows you to create MockWorlds, access mock servers, and run assertions programmatically.
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+## Base URL
 
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+```
+https://api.mokra.ai/api
+```
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+All requests require an API key in the `X-API-Key` header:
 
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+```bash
+curl https://api.mokra.ai/api/worlds \
+  -H "X-API-Key: mk_live_your_key"
 ```
+
+## Core concepts
+
+### Mock Servers
+
+Mock servers are replicas of real-world APIs. Each service (Stripe, Shopify, etc.) has its own mock server that returns realistic responses.
+
+### Worlds
+
+A World is a container that groups mock servers together for a test. It provides:
+- Isolated state
+- Observation recording
+- Assertion evaluation
+
+### Observations
+
+Observations are human-readable records of what happened during a test. They describe API calls in plain English.
+
+### Assertions
+
+Assertions verify that expected outcomes occurred, regardless of the path taken to get there.
+
+## Quick example
+
+```bash
+# 1. Create a world
+curl -X POST https://api.mokra.ai/api/worlds \
+  -H "X-API-Key: mk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My test",
+    "services": ["stripe", "shopify"]
+  }'
+
+# Response:
+# {
+#   "id": "world_abc123",
+#   "mock_servers": {
+#     "stripe": { "id": "ms_xyz", "base_url": "..." },
+#     "shopify": { "id": "ms_abc", "base_url": "..." }
+#   }
+# }
+
+# 2. Make API calls through the mock server
+curl https://api.mokra.ai/mock/stripe/v1/charges \
+  -H "X-API-Key: mk_live_..." \
+  -H "X-World-Id: world_abc123" \
+  -d "amount=5000&currency=usd"
+
+# 3. Get observations
+curl https://api.mokra.ai/api/worlds/world_abc123/observations \
+  -H "X-API-Key: mk_live_..."
+
+# 4. Run assertions
+curl -X POST https://api.mokra.ai/api/worlds/world_abc123/assert \
+  -H "X-API-Key: mk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "assertions": ["a charge was created"]
+  }'
+```
+
+## Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Create World" href="/api-reference/endpoint/create-world">
+    POST /worlds
+  </Card>
+  <Card title="Mock Server" href="/api-reference/endpoint/mock-server">
+    ANY /mock/{service}/*
+  </Card>
+  <Card title="Observations" href="/api-reference/endpoint/observations">
+    GET /worlds/{id}/observations
+  </Card>
+  <Card title="Assertions" href="/api-reference/endpoint/assertions">
+    POST /worlds/{id}/assert
+  </Card>
+</CardGroup>
+
+## SDKs
+
+For easier integration, use one of our official SDKs:
+
+- [Ruby SDK](/sdks/ruby)
+- [Python SDK](/sdks/python)
+- [TypeScript SDK](/sdks/typescript) (coming soon)

@@ -1,0 +1,180 @@
+---
+title: "How It Works"
+description: "Technical architecture of Mokra mock servers"
+---
+
+# How Mock Servers Work
+
+Understanding the technical architecture behind Mokra's mock servers.
+
+## The interception layer
+
+When you configure Mokra, it installs an HTTP interception layer:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Your Code                                │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Stripe::Charge.create(amount: 5000)                │    │
+│  │  → Makes HTTP POST to api.stripe.com                │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Mokra Interceptor                          │
+│                                                              │
+│   1. Detects request to api.stripe.com                       │
+│   2. Looks up "stripe" in service mappings                   │
+│   3. Rewrites URL to api.mokra.ai/mock/stripe/...            │
+│   4. Adds your Mokra API key                                 │
+│   5. Forwards request                                        │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Mokra Mock Server                               │
+│                                                              │
+│   1. Validates request format                                │
+│   2. Processes according to service spec                     │
+│   3. Updates state (if applicable)                           │
+│   4. Returns realistic response                              │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Your Code                                  │
+│                                                              │
+│   response = { "id": "ch_mock_abc", "status": "succeeded" }  │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Service mappings
+
+Mokra knows how to route requests based on hostnames:
+
+| Hostname | Service |
+|----------|---------|
+| `api.stripe.com` | stripe |
+| `*.myshopify.com` | shopify |
+| `api.sendgrid.com` | sendgrid |
+| `api.loopreturns.com` | loop-returns |
+| ... | 800+ more |
+
+You can add custom mappings:
+
+```ruby
+Mockworld::ServiceMapper.add_mapping("api.myservice.com", "myservice")
+```
+
+## Request transformation
+
+Original request:
+```http
+POST https://api.stripe.com/v1/charges
+Authorization: Bearer sk_test_xyz
+Content-Type: application/x-www-form-urlencoded
+
+amount=5000&currency=usd
+```
+
+Transformed request:
+```http
+POST https://api.mokra.ai/mock/stripe/v1/charges
+X-API-Key: mk_live_your_key
+X-Original-Auth: Bearer sk_test_xyz
+Content-Type: application/x-www-form-urlencoded
+
+amount=5000&currency=usd
+```
+
+The original auth header is preserved (for validation) but your Mokra key authenticates the request.
+
+## Response generation
+
+Mock servers generate responses that match the real API:
+
+1. **Schema validation** — Request must match expected format
+2. **ID generation** — Creates realistic-looking IDs (`ch_mock_abc123`)
+3. **Timestamps** — Uses current time for `created` fields
+4. **State updates** — Persists resources for later retrieval
+5. **Related resources** — Links to previously created objects
+
+```json
+{
+  "id": "ch_mock_1a2b3c4d",
+  "object": "charge",
+  "amount": 5000,
+  "currency": "usd",
+  "status": "succeeded",
+  "created": 1709251200,
+  "customer": "cus_mock_xyz789",
+  "livemode": false
+}
+```
+
+## State management
+
+Each MockWorld (or session) maintains isolated state:
+
+```ruby
+# Session 1
+customer = Stripe::Customer.create(email: "ana@example.com")
+# Creates cus_mock_session1_abc
+
+# Session 2 (different test)
+customer = Stripe::Customer.create(email: "bob@example.com")
+# Creates cus_mock_session2_xyz
+# Cannot see Session 1's customer
+```
+
+State persists within a session:
+
+```ruby
+# Same session
+customer = Stripe::Customer.create(email: "ana@example.com")
+charge = Stripe::Charge.create(customer: customer.id, amount: 5000)
+# charge.customer == customer.id ✓
+```
+
+## SDK compatibility
+
+Mokra works with official SDKs because it intercepts at the HTTP layer:
+
+```ruby
+# All of these work
+Stripe::Charge.create(...)           # Stripe Ruby SDK
+ShopifyAPI::Order.find(...)          # Shopify Ruby SDK
+client.messages.create(...)          # SendGrid Ruby SDK
+Net::HTTP.post(uri, body)            # Raw HTTP
+Faraday.post(url, body)              # Faraday
+HTTParty.post(url, body: body)       # HTTParty
+```
+
+## Performance
+
+- **Latency**: ~50-100ms (network round-trip to Mokra servers)
+- **Rate limits**: None
+- **Concurrent requests**: Unlimited
+- **State storage**: Automatic cleanup after session ends
+
+## Security
+
+- **API key scoping**: Keys can be scoped to specific services
+- **No credential forwarding**: Real API keys are never sent to Mokra
+- **HTTPS only**: All traffic encrypted
+- **Data isolation**: Each session's state is isolated
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Stateful Mocks" icon="database" href="/mock-servers/stateful-mocks">
+    Learn about state management
+  </Card>
+  <Card title="Seeding Data" icon="seedling" href="/mock-servers/seeding-data">
+    Pre-populate test data
+  </Card>
+</CardGroup>

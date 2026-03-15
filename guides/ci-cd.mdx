@@ -1,0 +1,261 @@
+---
+title: "CI/CD Integration"
+description: "Run Mokra tests in your deployment pipeline"
+---
+
+# CI/CD Integration
+
+Run mock server tests and MockWorld Tests in your CI/CD pipeline.
+
+## Why Mokra in CI/CD
+
+- **No external credentials needed** — one `MOKRA_API_KEY` for everything
+- **No rate limits** — tests run as fast as your CI
+- **No flaky tests** — mock servers are deterministic
+- **No sandbox pollution** — fresh state every run
+
+## GitHub Actions
+
+### Basic setup
+
+```yaml
+# .github/workflows/test.yml
+name: Tests
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Run tests
+        env:
+          MOKRA_API_KEY: ${{ secrets.MOKRA_API_KEY }}
+        run: bundle exec rspec
+```
+
+### With AI agent tests
+
+```yaml
+# .github/workflows/agent-tests.yml
+name: AI Agent Tests
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run MockWorld Tests
+        env:
+          MOKRA_API_KEY: ${{ secrets.MOKRA_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: pytest tests/agent_tests.py -v
+```
+
+## GitLab CI
+
+```yaml
+# .gitlab-ci.yml
+test:
+  image: ruby:3.2
+  variables:
+    MOKRA_API_KEY: $MOKRA_API_KEY
+  script:
+    - bundle install
+    - bundle exec rspec
+```
+
+## CircleCI
+
+```yaml
+# .circleci/config.yml
+version: 2.1
+jobs:
+  test:
+    docker:
+      - image: cimg/ruby:3.2
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: bundle install
+      - run:
+          name: Run tests
+          command: bundle exec rspec
+          environment:
+            MOKRA_API_KEY: ${MOKRA_API_KEY}
+```
+
+## Setting up secrets
+
+### GitHub
+
+1. Go to your repository → Settings → Secrets and variables → Actions
+2. Click "New repository secret"
+3. Add `MOKRA_API_KEY` with your API key
+
+### GitLab
+
+1. Go to your project → Settings → CI/CD → Variables
+2. Add `MOKRA_API_KEY` with your API key
+3. Mark as "Masked" for security
+
+### CircleCI
+
+1. Go to Project Settings → Environment Variables
+2. Add `MOKRA_API_KEY` with your API key
+
+## Test organization
+
+### Separating integration tests
+
+```ruby
+# spec/integration/stripe_spec.rb
+RSpec.describe "Stripe Integration", type: :integration do
+  before(:all) do
+    Mockworld.configure do |config|
+      config.api_key = ENV['MOKRA_API_KEY']
+    end
+  end
+
+  it "creates charges" do
+    charge = Stripe::Charge.create(amount: 5000, currency: "usd")
+    expect(charge.status).to eq("succeeded")
+  end
+end
+```
+
+### Tagging agent tests
+
+```python
+# tests/test_agents.py
+import pytest
+
+@pytest.mark.agent
+def test_refund_agent():
+    world = mockworld(name="Refund", services=["stripe"])
+    with world.run():
+        agent.invoke("Process refund")
+    world.assert("refund was created")
+```
+
+Run only agent tests:
+```bash
+pytest -m agent
+```
+
+## Parallel testing
+
+Mokra supports parallel test execution. Each test gets isolated state.
+
+```yaml
+# GitHub Actions with parallel jobs
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-group: [unit, integration, agents]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ${{ matrix.test-group }} tests
+        env:
+          MOKRA_API_KEY: ${{ secrets.MOKRA_API_KEY }}
+        run: bundle exec rspec spec/${{ matrix.test-group }}
+```
+
+## Caching
+
+Mock server responses are fast, but you can still cache dependencies:
+
+```yaml
+- name: Cache gems
+  uses: actions/cache@v3
+  with:
+    path: vendor/bundle
+    key: ${{ runner.os }}-gems-${{ hashFiles('Gemfile.lock') }}
+```
+
+## Debugging failed tests
+
+When tests fail in CI, observations help debug:
+
+```ruby
+RSpec.configure do |config|
+  config.after(:each) do |example|
+    if example.exception && defined?(@world)
+      puts "=== MockWorld Observations ==="
+      puts @world.observe(print: false)
+    end
+  end
+end
+```
+
+## Example: Complete workflow
+
+```yaml
+name: Full Test Suite
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bundle exec rubocop
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bundle exec rspec spec/unit
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run integration tests
+        env:
+          MOKRA_API_KEY: ${{ secrets.MOKRA_API_KEY }}
+        run: bundle exec rspec spec/integration
+
+  agent-tests:
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run agent tests
+        env:
+          MOKRA_API_KEY: ${{ secrets.MOKRA_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: bundle exec rspec spec/agents
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Mock Servers Quickstart" icon="bolt" href="/mock-servers/quickstart">
+    Get started with mock servers
+  </Card>
+  <Card title="MockWorld Tests" icon="flask-vial" href="/mockworld-tests/quickstart">
+    Test AI agents
+  </Card>
+</CardGroup>

@@ -1,0 +1,98 @@
+---
+title: "Observations"
+description: "Get observations from a MockWorld"
+api: "GET /worlds/{id}/observations"
+---
+
+# Observations
+
+Retrieve observations recorded during MockWorld execution.
+
+## Request
+
+```bash
+GET https://api.mokra.ai/api/worlds/{id}/observations
+```
+
+### URL Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `id` | World ID |
+
+### Headers
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-API-Key` | Yes | Your Mokra API key |
+
+### Query Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `service` | string | Filter by service slug |
+| `format` | string | `json` (default) or `text` |
+
+## Response
+
+```json
+{
+  "observations": [
+    {
+      "id": "obs_abc123",
+      "timestamp": "2024-03-15T10:30:00Z",
+      "service": "stripe",
+      "method": "POST",
+      "path": "/v1/charges",
+      "status_code": 200,
+      "description": "Created charge for $50.00 USD",
+      "duration_ms": 45
+    },
+    {
+      "id": "obs_def456",
+      "timestamp": "2024-03-15T10:30:01Z",
+      "service": "sendgrid",
+      "method": "POST",
+      "path": "/v3/mail/send",
+      "status_code": 202,
+      "description": "Sent email to customer@example.com",
+      "duration_ms": 32
+    }
+  ]
+}
+```
+
+## Example
+
+```bash
+curl https://api.mokra.ai/api/worlds/world_abc123/observations \
+  -H "X-API-Key: mk_live_your_key"
+```
+
+### Text format
+
+```bash
+curl "https://api.mokra.ai/api/worlds/world_abc123/observations?format=text" \
+  -H "X-API-Key: mk_live_your_key"
+```
+
+Response:
+
+```
+POST stripe/v1/charges → Created charge for $50.00 USD
+POST sendgrid/v3/mail/send → Sent email to customer@example.com
+```
+
+### Filter by service
+
+```bash
+curl "https://api.mokra.ai/api/worlds/world_abc123/observations?service=stripe" \
+  -H "X-API-Key: mk_live_your_key"
+```
+
+## Errors
+
+| Status | Description |
+|--------|-------------|
+| 401 | Invalid or missing API key |
+| 404 | World not found |

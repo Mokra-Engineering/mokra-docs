@@ -1,0 +1,308 @@
+---
+title: "Testing AI Agents"
+description: "For developers building autonomous AI agents"
+---
+
+# Testing AI Agents
+
+You're building AI agents that make autonomous decisions.
+The agent decides WHAT to do, not just HOW.
+Traditional tests don't work because behavior is non-deterministic.
+
+**MockWorld Tests let you assert on outcomes, not paths.**
+
+## The challenge
+
+Your agent processes requests like this:
+
+```python
+agent.invoke("Help customer Ana get a refund for her broken order")
+```
+
+The agent might:
+- Look up Ana's account
+- Find her recent orders
+- Check the return policy
+- Create a refund in Stripe
+- Update the order in Shopify
+- Send Ana an email
+- Log a support ticket
+
+But it might do these in different orders. It might skip some steps. It might add extra steps.
+
+**You can't predict the exact sequence.**
+
+Traditional tests fail:
+
+```python
+# This WILL break
+assert agent.steps == ["lookup_customer", "find_order", "create_refund"]
+# ❌ Agent took a different path this time
+```
+
+## The solution
+
+Test **what happened**, not **how it happened**.
+
+```python
+from mokra import mockworld
+
+world = mockworld(name="Refund test", services=["stripe", "shopify", "sendgrid"])
+
+with world.run():
+    # Agent runs autonomously
+    agent.invoke("Help Ana get a refund for order #1234")
+    # We don't control the steps
+
+# See what the agent did (plain English)
+world.observe()
+# => "Agent retrieved customer Ana from Shopify"
+# => "Agent retrieved order #1234"
+# => "Agent created refund of $75.00 in Stripe"
+# => "Agent sent email to ana@example.com"
+
+# Assert on OUTCOMES
+world.assert("exactly one refund was created")
+world.assert("refund amount matches order total")
+world.assert("customer was notified via email")
+```
+
+**Run 1:** Agent takes 4 steps → ✓ Pass (outcomes correct)
+
+**Run 2:** Agent takes 7 steps → ✓ Pass (outcomes still correct)
+
+**Run 3:** Agent takes 3 steps → ✓ Pass (outcomes still correct)
+
+## Complete example with LangChain
+
+```python
+from mokra import mockworld
+from langchain.agents import create_tool_calling_agent
+from langchain_openai import ChatOpenAI
+from langchain.tools import tool
+import requests
+
+# Define tools that make real HTTP calls
+@tool
+def create_refund(payment_intent_id: str, amount: int) -> dict:
+    """Create a refund in Stripe"""
+    response = requests.post(
+        "https://api.stripe.com/v1/refunds",
+        auth=("sk_test_anything", ""),
+        data={"payment_intent": payment_intent_id, "amount": amount}
+    )
+    return response.json()
+
+@tool
+def get_order(order_id: str) -> dict:
+    """Get order details from Shopify"""
+    response = requests.get(
+        f"https://mystore.myshopify.com/admin/api/2024-01/orders/{order_id}.json",
+        headers={"X-Shopify-Access-Token": "any_token"}
+    )
+    return response.json()
+
+@tool
+def send_email(to: str, subject: str, body: str) -> dict:
+    """Send email via SendGrid"""
+    response = requests.post(
+        "https://api.sendgrid.com/v3/mail/send",
+        headers={"Authorization": "Bearer any_key"},
+        json={
+            "personalizations": [{"to": [{"email": to}]}],
+            "subject": subject,
+            "content": [{"type": "text/plain", "value": body}]
+        }
+    )
+    return {"status": "sent"}
+
+# Create the agent
+llm = ChatOpenAI(model="gpt-4")
+tools = [create_refund, get_order, send_email]
+agent = create_tool_calling_agent(llm, tools, prompt)
+
+# Test it in a MockWorld
+world = mockworld(name="Refund agent", services=["stripe", "shopify", "sendgrid"])
+
+with world.run():
+    agent.invoke({
+        "input": "Process a full refund for order #1234 and notify the customer"
+    })
+
+# Observe what happened
+world.observe()
+
+# Assert outcomes
+world.assert("exactly one refund was created")
+world.assert("one email was sent to the customer")
+world.assert("no errors occurred")
+```
+
+## Seeding state
+
+Set up realistic test scenarios:
+
+```python
+world = mockworld(name="Refund test", services=["stripe", "shopify"])
+
+world.seed("""
+  shopify:
+    orders:
+      - id: "1234"
+        customer_email: "ana@example.com"
+        total_price: "150.00"
+        financial_status: "paid"
+
+  stripe:
+    payment_intents:
+      - id: "pi_abc123"
+        amount: 15000
+        status: "succeeded"
+        metadata:
+          order_id: "1234"
+""")
+
+with world.run():
+    agent.invoke("Refund order #1234")
+
+world.assert("refund amount is $150.00")
+```
+
+## Testing safety boundaries
+
+Verify your agent stays within bounds:
+
+```python
+with world.run():
+    agent.invoke("Process all refunds from last month")
+
+# Agent should refuse bulk operations
+world.assert("fewer than 5 refunds were created")
+world.assert("agent requested human approval")
+world.assert("no unauthorized access attempts")
+```
+
+## Testing error handling
+
+Verify graceful degradation:
+
+```python
+# Seed a scenario with no matching order
+world.seed("""
+  shopify:
+    orders: []
+""")
+
+with world.run():
+    agent.invoke("Refund order #9999")
+
+world.assert("no refund was created")
+world.assert("agent reported order not found")
+world.assert("no error emails sent to customer")
+```
+
+## Programmatic assertions
+
+For complex validations:
+
+```python
+with world.run():
+    agent.invoke("Process refund for order #1234")
+
+state = world.state()
+
+# Verify exact state
+assert state["stripe"]["refunds"].count == 1
+assert state["stripe"]["refunds"][0]["amount"] == 15000
+assert state["sendgrid"]["emails"].count == 1
+assert "refund" in state["sendgrid"]["emails"][0]["subject"].lower()
+
+# Verify no side effects
+assert state["stripe"]["charges"].count == 0
+```
+
+## Mokra vs LangSmith
+
+| Aspect | LangSmith | Mokra |
+|--------|-----------|-------|
+| **Layer** | LangChain callbacks | HTTP |
+| **Sees** | Tool invocations, LLM calls | All HTTP requests |
+| **Catches** | What LangChain reports | Everything |
+| **Output** | Traces, tokens, latency | Plain English |
+| **Purpose** | Debug LLM reasoning | Test outcomes |
+
+**Use both:** LangSmith for debugging, Mokra for testing.
+
+## Running in CI/CD
+
+```yaml
+# .github/workflows/test.yml
+name: Test AI Agent
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run MockWorld Tests
+        env:
+          MOKRA_API_KEY: ${{ secrets.MOKRA_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: pytest tests/agent_tests.py
+```
+
+No Stripe sandbox. No Shopify test store. Just one `MOKRA_API_KEY`.
+
+## Best practices
+
+### 1. Test outcomes, not implementation
+
+```python
+# Bad
+world.assert("agent called get_order tool first")
+
+# Good
+world.assert("order was retrieved")
+world.assert("refund was created for correct amount")
+```
+
+### 2. Test safety boundaries
+
+```python
+world.assert("agent stayed within rate limits")
+world.assert("no bulk operations without approval")
+```
+
+### 3. Test across multiple services
+
+```python
+world = mockworld(name="E2E", services=[
+    "stripe", "shopify", "sendgrid", "zendesk", "slack"
+])
+
+# Verify agent updated all systems correctly
+world.assert("refund created in Stripe")
+world.assert("order updated in Shopify")
+world.assert("email sent to customer")
+world.assert("ticket closed in Zendesk")
+world.assert("notification sent to Slack")
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="MockWorld Tests Quickstart" icon="flask-vial" href="/mockworld-tests/quickstart">
+    Test your first agent
+  </Card>
+  <Card title="Observe" icon="eye" href="/mockworld-tests/observe">
+    See what agents did
+  </Card>
+  <Card title="Assert" icon="check" href="/mockworld-tests/assert">
+    Assertion patterns
+  </Card>
+  <Card title="The Paradigm" icon="lightbulb" href="/mockworld-tests/the-paradigm">
+    Understand MockWorld Tests
+  </Card>
+</CardGroup>

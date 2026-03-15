@@ -1,0 +1,107 @@
+---
+title: "Mock Server"
+description: "Make requests through mock servers"
+api: "ANY /mock/{service}/*"
+---
+
+# Mock Server
+
+Make API requests through Mokra mock servers. Requests are intercepted and return realistic responses.
+
+## Request
+
+```bash
+ANY https://api.mokra.ai/mock/{service}/{path}
+```
+
+### URL Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `service` | Service slug (e.g., `stripe`, `shopify`) |
+| `path` | Original API path (e.g., `v1/charges`) |
+
+### Headers
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-API-Key` | Yes | Your Mokra API key |
+| `X-World-Id` | No | World ID for stateful testing |
+
+## Example: Stripe charge
+
+```bash
+curl -X POST https://api.mokra.ai/mock/stripe/v1/charges \
+  -H "X-API-Key: mk_live_your_key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "amount=5000&currency=usd"
+```
+
+### Response
+
+```json
+{
+  "id": "ch_mock_abc123",
+  "object": "charge",
+  "amount": 5000,
+  "currency": "usd",
+  "status": "succeeded",
+  "created": 1710496200,
+  "livemode": false
+}
+```
+
+## Example: Shopify order
+
+```bash
+curl https://api.mokra.ai/mock/shopify/admin/api/2024-01/orders/123.json \
+  -H "X-API-Key: mk_live_your_key"
+```
+
+### Response
+
+```json
+{
+  "order": {
+    "id": 123,
+    "total_price": "150.00",
+    "financial_status": "paid",
+    "fulfillment_status": null,
+    "created_at": "2024-03-15T10:30:00Z"
+  }
+}
+```
+
+## Stateful requests
+
+To maintain state across requests, include a World ID:
+
+```bash
+# Create a customer
+curl -X POST https://api.mokra.ai/mock/stripe/v1/customers \
+  -H "X-API-Key: mk_live_your_key" \
+  -H "X-World-Id: world_abc123" \
+  -d "email=test@example.com"
+
+# Retrieve the same customer
+curl https://api.mokra.ai/mock/stripe/v1/customers/cus_mock_xyz \
+  -H "X-API-Key: mk_live_your_key" \
+  -H "X-World-Id: world_abc123"
+```
+
+## Supported methods
+
+All HTTP methods are supported:
+- GET
+- POST
+- PUT
+- PATCH
+- DELETE
+
+## Errors
+
+| Status | Description |
+|--------|-------------|
+| 401 | Invalid or missing API key |
+| 404 | Unknown service or endpoint |
+| 422 | Invalid request format |

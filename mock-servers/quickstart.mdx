@@ -1,0 +1,200 @@
+---
+title: "Mock Servers Quickstart"
+description: "Get realistic API responses in 2 minutes"
+---
+
+# Mock Servers Quickstart
+
+Get realistic API responses from 800+ services. One API key. No sandbox accounts needed.
+
+## 1. Get your API key
+
+Sign up at [app.mokra.ai](https://app.mokra.ai) and copy your API key.
+
+```bash
+export MOKRA_API_KEY=mk_live_xxxxxxxxxxxxxxxx
+```
+
+This one key gives you access to Stripe, Shopify, SendGrid, and 800+ more services.
+
+## 2. Install the SDK
+
+<CodeGroup>
+```bash Ruby
+gem install mockworld
+```
+
+```bash Python
+pip install mokra
+```
+
+```bash Node.js
+npm install @mokra/sdk
+```
+</CodeGroup>
+
+## 3. Configure and make API calls
+
+Your code calls real API endpoints. Mokra intercepts and returns realistic responses.
+
+<CodeGroup>
+```ruby Ruby
+require 'mockworld'
+
+Mockworld.configure do |config|
+  config.api_key = ENV['MOKRA_API_KEY']
+end
+
+# Make normal API calls — Mokra intercepts them
+charge = Stripe::Charge.create(
+  amount: 5000,
+  currency: "usd",
+  source: "tok_visa"
+)
+
+puts charge.id       # => "ch_mock_abc123"
+puts charge.status   # => "succeeded"
+puts charge.amount   # => 5000
+```
+
+```python Python
+import mokra
+import stripe
+
+mokra.configure(api_key=os.environ["MOKRA_API_KEY"])
+
+# Make normal API calls — Mokra intercepts them
+charge = stripe.Charge.create(
+    amount=5000,
+    currency="usd",
+    source="tok_visa"
+)
+
+print(charge.id)      # => "ch_mock_abc123"
+print(charge.status)  # => "succeeded"
+```
+
+```typescript TypeScript
+import { configure } from '@mokra/sdk';
+import Stripe from 'stripe';
+
+configure({ apiKey: process.env.MOKRA_API_KEY });
+
+const stripe = new Stripe('sk_test_anything');
+const charge = await stripe.charges.create({
+  amount: 5000,
+  currency: 'usd',
+  source: 'tok_visa',
+});
+
+console.log(charge.id);      // => "ch_mock_abc123"
+console.log(charge.status);  // => "succeeded"
+```
+</CodeGroup>
+
+## 4. That's it
+
+You just got a realistic Stripe response without:
+- A Stripe account
+- Test API keys
+- Sandbox configuration
+- Rate limit concerns
+
+The response has the same structure, fields, and types as the real Stripe API.
+
+---
+
+## Try more services
+
+Same API key works for all services:
+
+<CodeGroup>
+```ruby Shopify
+# Get an order from Shopify
+order = ShopifyAPI::Order.find(id: "123456789")
+puts order.total_price       # => "150.00"
+puts order.customer.email    # => "customer@example.com"
+```
+
+```ruby SendGrid
+# Send an email via SendGrid
+sg = SendGrid::API.new(api_key: "any_key")
+response = sg.client.mail._("send").post(request_body: {
+  personalizations: [{ to: [{ email: "test@example.com" }] }],
+  from: { email: "from@example.com" },
+  subject: "Hello",
+  content: [{ type: "text/plain", value: "World" }]
+})
+puts response.status_code  # => 202
+```
+
+```ruby Loop Returns
+# List returns from Loop
+uri = URI("https://api.loopreturns.com/api/v1/warehouse/return/list")
+response = Net::HTTP.get(uri)
+returns = JSON.parse(response)
+puts returns["data"].length  # => 5
+```
+</CodeGroup>
+
+---
+
+## Stateful behavior
+
+Mock servers maintain state. Create something, then reference it:
+
+```ruby
+# Create a customer
+customer = Stripe::Customer.create(email: "ana@example.com")
+# => { "id": "cus_mock_abc123", "email": "ana@example.com" }
+
+# Create a payment for that customer
+payment = Stripe::PaymentIntent.create(
+  amount: 5000,
+  currency: "usd",
+  customer: customer.id  # References the customer we just created
+)
+# => { "id": "pi_mock_xyz789", "customer": "cus_mock_abc123", ... }
+
+# Refund the payment
+refund = Stripe::Refund.create(payment_intent: payment.id)
+# => { "id": "re_mock_qrs456", "payment_intent": "pi_mock_xyz789", ... }
+```
+
+The refund knows about the payment. The payment knows about the customer. Just like production.
+
+---
+
+## What you get
+
+| Feature | Description |
+|---------|-------------|
+| **One API key** | Access 800+ services |
+| **Realistic responses** | Same structure as production APIs |
+| **Stateful** | Objects reference each other correctly |
+| **No rate limits** | Test as fast as you can code |
+| **Fresh state** | Each test starts clean |
+| **Any auth value** | `sk_test_anything` works |
+
+---
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="How It Works" icon="gear" href="/mock-servers/how-it-works">
+    Understand the technical architecture
+  </Card>
+  <Card title="Stateful Mocks" icon="database" href="/mock-servers/stateful-mocks">
+    Learn how state management works
+  </Card>
+  <Card title="Seeding Data" icon="seedling" href="/mock-servers/seeding-data">
+    Pre-populate state for your tests
+  </Card>
+  <Card title="All Services" icon="grid" href="/services/overview">
+    Browse 800+ available mock servers
+  </Card>
+</CardGroup>
+
+<Note>
+**Building AI agents?** Check out [MockWorld Tests](/mockworld-tests/quickstart) for observe and assert capabilities.
+</Note>

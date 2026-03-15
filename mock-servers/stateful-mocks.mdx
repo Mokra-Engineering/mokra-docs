@@ -1,0 +1,189 @@
+---
+title: "Stateful Mocks"
+description: "Mock servers that maintain state across requests"
+---
+
+# Stateful Mocks
+
+Mokra mock servers maintain state. Create a customer, then charge them. Create a payment, then refund it. Objects reference each other correctly.
+
+## Why stateful mocks matter
+
+Real APIs have state. Stateless mocks can't test real workflows:
+
+```ruby
+# Stateless mock (broken)
+payment = create_payment()          # Returns {"id": "pi_abc"}
+refund = create_refund(payment.id)  # Fails - doesn't know about payment
+
+# Stateful mock (Mokra)
+payment = create_payment()          # Returns {"id": "pi_mock_abc"}
+refund = create_refund(payment.id)  # Works - knows about payment
+```
+
+## How it works
+
+### Creating resources
+
+When you create a resource, it's stored in the mock server's state:
+
+```ruby
+customer = Stripe::Customer.create(email: "ana@example.com")
+# => { "id": "cus_mock_abc123", "email": "ana@example.com", ... }
+
+# Customer is now stored in state
+```
+
+### Referencing resources
+
+Later requests can reference previously created resources:
+
+```ruby
+# Create payment for the customer
+payment = Stripe::PaymentIntent.create(
+  amount: 5000,
+  currency: "usd",
+  customer: customer.id  # References cus_mock_abc123
+)
+# => { "id": "pi_mock_xyz", "customer": "cus_mock_abc123", ... }
+```
+
+### Retrieving resources
+
+You can retrieve resources you've created:
+
+```ruby
+# Retrieve the customer
+retrieved = Stripe::Customer.retrieve(customer.id)
+# => { "id": "cus_mock_abc123", "email": "ana@example.com", ... }
+```
+
+### Updating resources
+
+Updates modify the stored state:
+
+```ruby
+Stripe::Customer.update(customer.id, { name: "Ana Smith" })
+
+retrieved = Stripe::Customer.retrieve(customer.id)
+# => { "id": "cus_mock_abc123", "email": "ana@example.com", "name": "Ana Smith" }
+```
+
+## Complete example
+
+```ruby
+# 1. Create a customer
+customer = Stripe::Customer.create(
+  email: "ana@example.com",
+  name: "Ana Smith"
+)
+
+# 2. Create a payment method
+payment_method = Stripe::PaymentMethod.create(
+  type: "card",
+  card: { number: "4242424242424242", exp_month: 12, exp_year: 2025, cvc: "123" }
+)
+
+# 3. Attach payment method to customer
+Stripe::PaymentMethod.attach(payment_method.id, { customer: customer.id })
+
+# 4. Create a payment intent
+payment_intent = Stripe::PaymentIntent.create(
+  amount: 5000,
+  currency: "usd",
+  customer: customer.id,
+  payment_method: payment_method.id,
+  confirm: true
+)
+
+# 5. Create a refund
+refund = Stripe::Refund.create(
+  payment_intent: payment_intent.id,
+  amount: 2500  # Partial refund
+)
+
+# All of these are linked correctly in state
+```
+
+## State isolation
+
+Each MockWorld has isolated state:
+
+```ruby
+# Test 1
+world1 = mockworld(name: "Test 1", services: ["stripe"])
+world1.run do
+  Stripe::Customer.create(email: "test1@example.com")
+end
+
+# Test 2 - cannot see Test 1's customer
+world2 = mockworld(name: "Test 2", services: ["stripe"])
+world2.run do
+  customer = Stripe::Customer.retrieve("cus_mock_abc123")
+  # => Not found (different world)
+end
+```
+
+## Accessing state directly
+
+You can inspect the state programmatically:
+
+```ruby
+world = mockworld(name: "Test", services: ["stripe"])
+
+world.run do
+  Stripe::Customer.create(email: "ana@example.com")
+  Stripe::Charge.create(amount: 5000, currency: "usd")
+end
+
+state = world.state
+
+# Access state by service and resource type
+state["stripe"]["customers"].count      # => 1
+state["stripe"]["charges"].count        # => 1
+
+# Access individual records
+state["stripe"]["customers"][0]["email"]  # => "ana@example.com"
+state["stripe"]["charges"][0]["amount"]   # => 5000
+```
+
+## State across services
+
+State works across multiple services in the same MockWorld:
+
+```ruby
+world = mockworld(name: "E2E", services: ["shopify", "stripe", "sendgrid"])
+
+world.run do
+  # Create order in Shopify
+  order = ShopifyAPI::Order.create(total: 150.00)
+
+  # Create charge in Stripe (with order reference)
+  charge = Stripe::Charge.create(
+    amount: 15000,
+    metadata: { shopify_order_id: order.id }
+  )
+
+  # Send confirmation via SendGrid
+  SendGrid::Mail.send(
+    to: "customer@example.com",
+    subject: "Order #{order.id} confirmed"
+  )
+end
+
+state = world.state
+state["shopify"]["orders"].count   # => 1
+state["stripe"]["charges"].count   # => 1
+state["sendgrid"]["emails"].count  # => 1
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Seeding Data" icon="seedling" href="/mock-servers/seeding-data">
+    Pre-populate state for tests
+  </Card>
+  <Card title="Assert" icon="check" href="/mockworld-tests/assert">
+    Assert on state in MockWorld Tests
+  </Card>
+</CardGroup>
